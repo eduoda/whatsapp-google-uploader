@@ -108,11 +108,15 @@ logs/
 data/
 
 # Authentication and credentials
+.tokens/
 tokens.json
+oauth-tokens.json
 credentials.json
 *.pem
 *.key
 *.p12
+*.crt
+*.cert
 
 # Cache directories
 .cache/
