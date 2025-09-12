@@ -1,12 +1,7 @@
 /**
  * Upload Type Definitions
- * AIDEV-TODO: implement-upload-types; complete upload type definitions
+ * AIDEV-NOTE: upload-types-legacy; legacy types (replaced by drive-types.ts)
  */
-
-export interface UploadOptions {
-  folderId?: string;
-  resumable?: boolean;
-}
 
 export interface UploadProgress {
   uploaded: number;

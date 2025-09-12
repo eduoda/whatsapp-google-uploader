@@ -27,8 +27,10 @@
   ],
   "author": "WhatsApp Google Uploader",
   "license": "MIT",
+  "dependencies": {
+    "googleapis": "^126.0.0"
+  },
   "peerDependencies": {
-    "googleapis": "^126.0.0",
     "@whatsapp-uploader/oauth": "^1.0.0"
   },
   "devDependencies": {
