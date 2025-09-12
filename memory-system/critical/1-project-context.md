@@ -1,39 +1,40 @@
 # Project Context
 
 ## Current Project
-**Name:** [Project Name]
-**Type:** [Web App/API/Library/etc]
-**Status:** [Development/Testing/Production]
+**Name:** WhatsApp Google Uploader
+**Type:** Node.js CLI Application with Library System
+**Status:** Architecture & Design Phase
 **Last Updated:** 2025-09-11
 
 ## Project Goals
-1. [Primary goal]
-2. [Secondary goal]
-3. [Additional goals]
+1. Create a production-ready WhatsApp media uploader to Google Photos/Drive
+2. Zero-copy architecture with direct file streaming
+3. Enterprise-grade reliability with recovery and deduplication
+4. Cross-platform support (Termux Android, Desktop)
 
 ## Current Sprint/Phase
-**Sprint:** [Sprint name/number]
-**Focus:** [Current main focus area]
-**Deadline:** [Target date]
+**Sprint:** Architecture & Design (Phase 1)
+**Focus:** System architecture definition and library boundaries
+**Deadline:** Architecture approval before implementation
 
 ## Tech Stack Summary
-- **Frontend:** [Technologies]
-- **Backend:** [Technologies]
-- **Database:** [Database type]
-- **Infrastructure:** [Deployment/hosting]
+- **Runtime:** Node.js 14+ with ES6+ features
+- **CLI Framework:** Commander.js with inquirer for interactive prompts
+- **APIs:** Google Photos API, Google Drive API, OAuth2
+- **Storage:** SQLite3 for progress/deduplication database
+- **Streaming:** Node.js native streams for memory-efficient uploads
+- **Cross-platform:** Path handling for Windows, macOS, Linux, Android/Termux
 
 ## Key Features
-- [Feature 1] - Status: [Done/In Progress/Planned]
-- [Feature 2] - Status: [Done/In Progress/Planned]
-- [Feature 3] - Status: [Done/In Progress/Planned]
+- Smart File Routing (Photos→Google Photos, Docs→Drive) - Status: Planned
+- Auto-Resume System with progress persistence - Status: Planned
+- SHA-256 Deduplication with persistent database - Status: Planned
+- Rate Limiting with exponential backoff - Status: Planned
+- Zero-Copy Direct Upload Architecture - Status: Planned
 
 ## Active Development Areas
-1. [Area 1] - [Brief description]
-2. [Area 2] - [Brief description]
-
-## Known Issues
-- [Issue 1] - Priority: [High/Medium/Low]
-- [Issue 2] - Priority: [High/Medium/Low]
+1. Library Architecture - Modular OAuth, Drive, Photos, Scanner, Proxy libraries
+2. Interface Contracts - Clear APIs between all system components
 
 ## Important Conventions
 - **Branch naming:** TASK-XXX-[agent]

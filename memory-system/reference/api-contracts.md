@@ -1,7 +1,7 @@
-# API Contracts
+# Library Interface Contracts - WhatsApp Google Uploader
 
 ## Overview
-This document defines all API contracts, endpoints, and integration specifications for the project.
+This document defines all library interfaces, method signatures, and data contracts for the WhatsApp Google Uploader modular system.
 
 ---
 

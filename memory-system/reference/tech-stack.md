@@ -1,70 +1,51 @@
-# Technology Stack
+# Technology Stack - WhatsApp Google Uploader
 
 ## Overview
-This document provides a comprehensive overview of all technologies, frameworks, libraries, and tools used in the project. Keep this updated as the stack evolves.
+This document provides a comprehensive overview of all technologies, frameworks, libraries, and tools used in the WhatsApp Google Uploader project.
 
 ---
 
-## Frontend Technologies
+## Runtime Environment
+- **Platform:** Node.js CLI Application
+- **Node.js Version:** >= 14.0.0 (ES6+ features, async/await, classes)
+- **Target Platforms:** Windows, macOS, Linux, Android (Termux)
+- **Package Manager:** npm (primary)
 
-### Core Framework
-- **Framework:** [React | Angular | Vue | Svelte | Next.js]
-- **Version:** [X.X.X]
-- **Language:** [TypeScript | JavaScript]
-- **Package Manager:** [npm | yarn | pnpm | bun]
+## Core Dependencies
 
-### UI/Styling
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| [CSS Framework] | X.X.X | [Tailwind CSS | Bootstrap | Material-UI] |
-| [CSS-in-JS] | X.X.X | [styled-components | emotion | CSS Modules] |
-| [Component Library] | X.X.X | [Ant Design | Chakra UI | custom] |
-| [Icons] | X.X.X | [Font Awesome | React Icons | Heroicons] |
+### CLI Framework
+- **commander.js**: Command parsing and help generation
+- **inquirer**: Interactive prompts for user input  
+- **ora**: Terminal spinners for progress indication
+- **chalk**: Terminal string styling for colored output
 
-### State Management
-- **Solution:** [Redux | MobX | Zustand | Context API | Recoil]
-- **Version:** X.X.X
-- **Middleware:** [Redux Thunk | Redux Saga | Redux Toolkit]
+### Google API Integration
+- **googleapis**: Official Google APIs client library
+- **google-auth-library**: OAuth2 authentication and token management
+- **Required APIs**:
+  - Google Photos Library API
+  - Google Drive API v3
+  - OAuth2 API for authentication
 
-### Routing
-- **Library:** [React Router | Vue Router | Angular Router]
-- **Version:** X.X.X
+### File Processing
+- **Node.js Streams**: Native streaming for memory-efficient file processing
+- **crypto**: Native module for SHA-256 hash calculation
+- **fs/promises**: Async file system operations
+- **path**: Cross-platform path manipulation
 
-### Build Tools
-| Tool | Version | Configuration |
-|------|---------|---------------|
-| Bundler | X.X.X | [Webpack | Vite | Parcel | Rollup] |
-| Transpiler | X.X.X | [TypeScript | Babel] |
-| Task Runner | X.X.X | [npm scripts | Gulp | Grunt] |
+### Data Storage
+- **sqlite3**: Embedded database for progress tracking and deduplication
 
-### Key Libraries
-```json
-{
-  "axios": "^X.X.X",          // HTTP client
-  "date-fns": "^X.X.X",       // Date utilities
-  "lodash": "^X.X.X",         // Utility functions
-  "react-hook-form": "^X.X.X", // Form handling
-  "zod": "^X.X.X"             // Schema validation
-}
-```
+## Development Dependencies
+- **jest**: Testing framework for unit, integration, and e2e tests
+- **eslint**: Code linting with strict JavaScript standards
+- **nodemon**: Development server with auto-restart (development)
+- **npm-audit**: Security vulnerability checking
 
----
-
-## Backend Technologies
-
-### Runtime Environment
-- **Language:** [Node.js | Python | Go | Java | Rust | C#]
-- **Version:** X.X.X
-- **Framework:** [Express | Fastify | NestJS | FastAPI | Django | Gin | Spring Boot]
-- **Framework Version:** X.X.X
-
-### API Layer
-| Type | Technology | Version | Use Case |
-|------|------------|---------|----------|
-| REST | [Express | Fastify] | X.X.X | Primary API |
-| GraphQL | [Apollo | GraphQL Yoga] | X.X.X | [If applicable] |
-| WebSocket | [Socket.io | ws] | X.X.X | Real-time features |
-| gRPC | [grpc-node] | X.X.X | Service communication |
+## Configuration Management
+- **config files**: JSON-based configuration with environment overrides
+- **dotenv**: Environment variable management for credentials
+- **joi**: Configuration validation and schema enforcement
 
 ### Authentication & Authorization
 - **Strategy:** [JWT | Session | OAuth2 | SAML]

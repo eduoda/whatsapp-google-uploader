@@ -35,7 +35,63 @@
 
 ## Current Sprint Tasks
 
-<!-- Add tasks here following the format above -->
+## [✓] architect - TASK-001 - Architecture Design and Planning **COMPLETED**
+- Priority: 1
+- Description: Create comprehensive system architecture with C4 diagrams, library interfaces, and development phases for WhatsApp Google Uploader
+- Started: 2025-09-11 (current session)
+- Branch: TASK-001-architect  
+- Conflicts: None
+- Planning: TASK-001-architect-planning.md
+- Completed: 2025-09-11 (current session)
+- Report: TASK-001-architect-report.md
+
+## [ ] dwarf - TASK-002 - OAuth Library Development  
+- Priority: 2
+- Description: Implement Google OAuth2 authentication library with token management, refresh, and secure storage
+- Depends on: TASK-001 (architecture approval)
+- Phase: Phase 1 - Foundation Libraries
+
+## [ ] dwarf - TASK-003 - Google Drive Library Development
+- Priority: 2  
+- Description: Implement Google Drive API integration library for document/audio uploads with resumable uploads
+- Depends on: TASK-001 (architecture approval), TASK-002 (OAuth)
+- Phase: Phase 1 - Foundation Libraries
+
+## [ ] dwarf - TASK-004 - Google Photos Library Development
+- Priority: 2
+- Description: Implement Google Photos API integration library for photo/video uploads with album management
+- Depends on: TASK-001 (architecture approval), TASK-002 (OAuth)  
+- Phase: Phase 1 - Foundation Libraries
+
+## [ ] dwarf - TASK-005 - WhatsApp Scanner Library Development
+- Priority: 2
+- Description: Implement WhatsApp directory scanning with cross-platform file discovery and metadata extraction
+- Depends on: TASK-001 (architecture approval)
+- Phase: Phase 2 - Core Features
+
+## [ ] dwarf - TASK-006 - Proxy Library Development (Core Orchestrator)
+- Priority: 1
+- Description: Implement main orchestrator library with rate limiting, deduplication, progress tracking, and recovery
+- Depends on: TASK-002, TASK-003, TASK-004, TASK-005
+- Phase: Phase 2 - Core Features
+
+## [ ] api - TASK-007 - CLI Application Development  
+- Priority: 2
+- Description: Implement complete CLI interface with all commands (scan, upload, setup, check, logs)
+- Depends on: TASK-006 (Proxy library)
+- Phase: Phase 4 - CLI & UX
+
+## [ ] database - TASK-008 - Database Schema and Migrations
+- Priority: 2
+- Description: Design and implement SQLite schema for progress tracking, deduplication, and error handling
+- Depends on: TASK-001 (architecture approval)
+- Phase: Phase 1 - Foundation Libraries
+
+## [ ] seer - TASK-009 - Comprehensive Test Suite
+- Priority: 3
+- Description: Create unit, integration, and e2e tests for all libraries and CLI commands
+- Depends on: Architecture approval, all library implementations
+- Phase: Phase 5 - Testing & Hardening
 
 ---
 
