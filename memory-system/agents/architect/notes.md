@@ -88,3 +88,63 @@
 - Test suite provides excellent specification - dwarf should implement to make tests pass
 - OAuth integration patterns from TASK-002 should be followed consistently
 
+---
+
+### 2025-09-12 - TASK-004 Google Photos Library Orchestration
+
+**Project**: WhatsApp Google Uploader - Google Photos Library Development
+
+**Key Architectural Insights from Analysis**:
+- **Two-phase upload complexity**: Google Photos requires bytes upload → upload token → media item creation (vs Drive's single-phase)
+- **Batch processing critical**: Native batch support with 50-item limit significantly different from Drive's sequential approach
+- **Album vs folder paradigm**: Albums have 20,000 item limits and different organization model than Drive folders
+- **Rate limit differences**: Photos API has distinct quota structures requiring separate rate limiting strategy
+- **Media validation strictness**: Photos API has more restrictive format validation than Drive
+
+**Technical Decisions Made**:
+- **Comprehensive test suite analysis**: 744+ test assertions provide complete functional specification
+- **OAuth TokenManager integration**: Reuse existing secure authentication from TASK-002
+- **Stream-based processing**: Maintain zero-copy architecture for memory efficiency
+- **Error classification refinement**: Photos-specific error types (INVALID_MEDIA) beyond Drive patterns
+- **Progress tracking enhancement**: Multi-phase progress reporting for upload token + media item creation
+
+**Implementation Strategy Defined**:
+1. **Phase 1**: Core infrastructure with OAuth integration and album management
+2. **Phase 2**: Two-phase media upload with token management
+3. **Phase 3**: Batch processing with 50-item limits and progress tracking
+4. **Phase 4**: Test suite completion and performance optimization
+
+**Critical Implementation Considerations**:
+- **Upload token lifecycle**: 1-hour expiration, single-use tokens require careful management
+- **Batch size enforcement**: Never exceed 50 items per API call to avoid errors
+- **Album capacity monitoring**: Handle 20,000 item limit proactively
+- **Error recovery distinction**: Different retry strategies for upload vs media item creation failures
+- **Memory efficiency**: Stream processing must maintain constant memory usage regardless of batch size
+
+**Quality Standards Established**:
+- All 744+ test assertions must pass (comprehensive functional coverage)
+- TypeScript strict mode compliance with full type safety
+- <256MB memory usage regardless of file size or batch size
+- Progress reporting accuracy across multi-phase operations
+- Security validation for all user inputs (album names, descriptions)
+
+**Integration Patterns Defined**:
+- **TokenManager usage**: Consistent OAuth integration following TASK-002 patterns
+- **Stream processing**: Direct stream piping without intermediate buffers
+- **Error propagation**: Structured error responses with retry recommendations
+- **Progress callbacks**: Real-time progress updates for UI integration
+
+**Next Dependencies Enabled**:
+- TASK-005 (WhatsApp Scanner) can proceed with file discovery patterns
+- TASK-006 (Proxy orchestrator) can integrate both Drive and Photos libraries
+- CLI layer (TASK-007) will have complete upload functionality
+
+**Considerations for Future Sessions**:
+- Monitor Google Photos API quota usage patterns during implementation
+- Two-phase upload error handling needs comprehensive testing
+- Album organization strategy for large WhatsApp chat volumes
+- Performance benchmarking for batch operations vs sequential uploads
+- Cross-platform testing for media format support variations
+
+---
+
