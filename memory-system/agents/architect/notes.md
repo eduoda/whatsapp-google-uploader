@@ -38,3 +38,53 @@
 - Recovery system must handle all interruption scenarios (Ctrl+C, network loss, API errors, system crash)
 - Performance benchmarks needed (target: process 1000 files without memory growth)
 
+---
+
+### 2025-09-12 - TASK-003 Google Drive Library Orchestration
+
+**Task Created**: TASK-003-dwarf-spec.md - Complete specification for Google Drive library implementation
+
+**Key Insights from Analysis**:
+- **Comprehensive test suite exists**: 569 test assertions in drive-manager.test.ts provide complete functional specification
+- **OAuth integration ready**: TokenManager from TASK-002 provides secure authentication foundation
+- **Architecture patterns established**: Clear interfaces defined in architecture.md for Drive library
+- **Mock infrastructure complete**: Robust Google API mocks available for testing
+
+**Technical Specifications Defined**:
+- **Drive API v3 integration** with resumable uploads for files ≥5MB (Google's 256KB chunk size)
+- **Four-phase implementation**: Core structure → Upload functionality → Advanced features → Testing/polish
+- **Performance requirements**: <256MB memory usage regardless of file size, >1MB/s upload speed
+- **Security patterns**: TokenManager integration, secure file path validation, no sensitive data logging
+
+**Implementation Strategy**:
+- **Test-driven development**: All 569 test assertions must pass (comprehensive coverage)
+- **Stream-based processing**: Maintain zero-copy architecture throughout
+- **Error classification**: Permanent (400,401,403) vs Transient (429,≥500) with appropriate retry logic
+- **Progress callbacks**: Real-time upload progress for UI integration
+
+**Dependencies and Integration**:
+- ✅ **OAuth TokenManager**: Completed and tested (TASK-002)
+- ✅ **Project structure**: Complete TypeScript setup (TASK-010) 
+- ✅ **Architecture contracts**: All interfaces defined in architecture.md
+- ✅ **Test infrastructure**: Jest, fast-check, comprehensive mocks ready
+
+**Quality Standards Established**:
+- All TypeScript strict mode compliance
+- Property-based testing with fast-check
+- Comprehensive error handling with exponential backoff
+- Full JSDoc documentation and AIDEV comments
+- Cross-platform compatibility (Android/Termux + Desktop)
+
+**Next Actions for Dwarf Agent**:
+1. Begin with Phase 1 - implement api-client.ts with OAuth integration
+2. Create comprehensive drive-types.ts with all required interfaces
+3. Build upload-handler.ts with small file support first
+4. Progress through resumable uploads and folder management
+5. Ensure all 569 test assertions pass before completion
+
+**Architect Notes**:
+- Google Drive library is foundational for the entire upload system
+- Success here enables Photos library (TASK-004) and Proxy orchestrator (TASK-006)
+- Test suite provides excellent specification - dwarf should implement to make tests pass
+- OAuth integration patterns from TASK-002 should be followed consistently
+

@@ -45,8 +45,18 @@ describe('DriveManager', () => {
     mockFileSystem.reset();
     mockDrive = createMockGoogleDrive();
     
-    const { google } = require('googleapis');
-    mockDriveApi = google.drive();
+    // Create mock Drive API manually since Jest mock isn't working
+    mockDriveApi = {
+      files: {
+        create: jest.fn(),
+        get: jest.fn(),
+        list: jest.fn(),
+        update: jest.fn()
+      },
+      about: {
+        get: jest.fn()
+      }
+    };
     
     driveManager = new DriveManager({
       auth: {} as any, // Mock auth client
