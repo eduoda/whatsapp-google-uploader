@@ -162,7 +162,11 @@ export class PhotosManager {
     const uploadTokens: string[] = [];
     for (let i = 0; i < mediaItems.length; i++) {
       try {
-        const token = await this.uploadBytes(mediaItems[i].stream);
+        const item = mediaItems[i];
+        if (!item?.stream) {
+          throw new Error('Invalid media item');
+        }
+        const token = await this.uploadBytes(item.stream);
         uploadTokens.push(token);
       } catch (error: any) {
         results.push({
@@ -350,8 +354,8 @@ export class PhotosManager {
     const results: CreateMediaItemResult[] = response.data.newMediaItemResults || [];
     const result = results[0];
 
-    if (result.status.message !== 'Success' || !result.mediaItem) {
-      throw new Error(result.status.message || `Code: ${result.status.code}`);
+    if (!result || result.status?.message !== 'Success' || !result.mediaItem) {
+      throw new Error(result?.status?.message || `Code: ${result?.status?.code || 'Unknown'}`);
     }
 
     return {
