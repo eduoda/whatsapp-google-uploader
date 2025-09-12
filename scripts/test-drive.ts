@@ -41,16 +41,23 @@ async function testDrive() {
     // Get valid token
     const accessToken = await oauthManager.getValidToken();
     
-    // Create mock auth client for Drive
-    const auth = {
-      getAccessToken: async () => ({ token: accessToken }),
-      setCredentials: (tokens: any) => {},
-      credentials: { access_token: accessToken }
-    };
+    // Create a proper OAuth2 client for googleapis
+    const { google } = require('googleapis');
+    const OAuth2 = google.auth.OAuth2;
+    const oauth2Client = new OAuth2(
+      config.clientId,
+      config.clientSecret,
+      config.redirectUri
+    );
+    
+    // Set the access token
+    oauth2Client.setCredentials({
+      access_token: accessToken
+    });
 
     // Create Drive manager
     const driveManager = new DriveManager({
-      auth,
+      auth: oauth2Client,
       maxRetries: 3,
       retryDelay: 1000,
       resumableThreshold: 5 * 1024 * 1024 // 5MB
