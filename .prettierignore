@@ -1,0 +1,27 @@
+# Build outputs
+dist/
+coverage/
+.nyc_output/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# Configuration files that should maintain exact formatting
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+*.d.ts
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

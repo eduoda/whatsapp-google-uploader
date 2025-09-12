@@ -1,0 +1,99 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "plugins": ["@typescript-eslint", "jest", "node"],
+  "extends": [
+    "eslint:recommended",
+    "@typescript-eslint/recommended",
+    "@typescript-eslint/recommended-requiring-type-checking",
+    "plugin:jest/recommended",
+    "plugin:node/recommended",
+    "prettier"
+  ],
+  "env": {
+    "node": true,
+    "jest": true,
+    "es6": true
+  },
+  "settings": {
+    "node": {
+      "tryExtensions": [".js", ".ts", ".json"],
+      "resolvePaths": ["node_modules/@types"]
+    }
+  },
+  "rules": {
+    // TypeScript specific
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/explicit-function-return-type": "error",
+    "@typescript-eslint/explicit-module-boundary-types": "error",
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/prefer-readonly": "error",
+    "@typescript-eslint/prefer-nullish-coalescing": "error",
+    "@typescript-eslint/prefer-optional-chain": "error",
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/await-thenable": "error",
+    "@typescript-eslint/require-await": "error",
+    
+    // General JavaScript
+    "prefer-const": "error",
+    "no-var": "error",
+    "no-console": "warn",
+    "no-debugger": "error",
+    "no-alert": "error",
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-new-func": "error",
+    "prefer-template": "error",
+    "prefer-arrow-callback": "error",
+    "arrow-body-style": ["error", "as-needed"],
+    "object-shorthand": "error",
+    "prefer-destructuring": "error",
+    
+    // Node.js specific
+    "node/no-missing-import": "off", // TypeScript handles this
+    "node/no-unpublished-import": "off", // Workspaces handle this
+    "node/no-unsupported-features/es-syntax": "off", // TypeScript transpiles
+    "node/shebang": "off", // Not needed for TypeScript files
+    
+    // Jest specific
+    "jest/expect-expect": "error",
+    "jest/no-disabled-tests": "warn",
+    "jest/no-focused-tests": "error",
+    "jest/prefer-to-have-length": "error",
+    "jest/prefer-to-be": "error",
+    "jest/prefer-to-contain": "error",
+    
+    // Security
+    "no-unsafe-regex": "error",
+    "no-unsafe-negation": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts", "tests/**/*.ts"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-non-null-assertion": "off"
+      }
+    },
+    {
+      "files": ["scripts/**/*.js"],
+      "rules": {
+        "@typescript-eslint/no-var-requires": "off",
+        "node/no-unpublished-require": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "dist",
+    "coverage",
+    "node_modules",
+    "*.js",
+    "*.d.ts"
+  ]
+}
