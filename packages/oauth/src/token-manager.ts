@@ -40,11 +40,12 @@ export class TokenManager {
       const tokenData = JSON.stringify(tokens);
       const encryptedData = this.encrypt(tokenData);
       
-      // Convert colon-separated format to all hex for storage (test expectation)
-      const allHexData = encryptedData.replace(/:/g, '');
+      // Convert to hex-only format for storage (test expectation: /^[a-f0-9]+$/)
+      const hexData = encryptedData.replace(/:/g, '');
+      
       
       // Write to file with secure permissions (0o600 = owner read/write only)  
-      await fs.writeFile(this.tokenPath, allHexData, { mode: 0o600 });
+      await fs.writeFile(this.tokenPath, hexData, { mode: 0o600 });
     } catch (error) {
       throw error; // Re-throw for proper error handling in tests
     }
@@ -56,13 +57,24 @@ export class TokenManager {
    */
   async loadTokens(): Promise<StoredTokens | null> {
     try {
-      const allHexData = await fs.readFile(this.tokenPath, 'utf8');
+      const fileData = await fs.readFile(this.tokenPath, 'utf8');
       
-      // Reconstruct colon format from all-hex storage: iv(32):authTag(32):ciphertext(rest)
-      const iv = allHexData.substring(0, 32);
-      const authTag = allHexData.substring(32, 64);
-      const ciphertext = allHexData.substring(64);
-      const encryptedData = `${iv}:${authTag}:${ciphertext}`;
+      
+      // Reconstruct colon-separated format from hex-only storage
+      let encryptedData: string;
+      if (fileData.includes(':')) {
+        // Already in correct format (backward compatibility)
+        encryptedData = fileData;
+      } else {
+        // Hex-only format - reconstruct iv:authTag:ciphertext
+        if (fileData.length < 64) {
+          throw new Error('Failed to decrypt'); // Invalid format
+        }
+        const iv = fileData.substring(0, 32);
+        const authTag = fileData.substring(32, 64);
+        const ciphertext = fileData.substring(64);
+        encryptedData = `${iv}:${authTag}:${ciphertext}`;
+      }
       
       const decryptedData = this.decrypt(encryptedData);
       
@@ -96,8 +108,16 @@ export class TokenManager {
     try {
       // Check if file exists first
       await fs.access(this.tokenPath);
-      // Remove the file
-      await (fs as any).unlink(this.tokenPath);
+      
+      // Remove the file - handle both real fs and mocked scenarios
+      const fsAny = fs as any;
+      if (typeof fsAny.unlink === 'function') {
+        await fsAny.unlink(this.tokenPath);
+      } else {
+        // In test environment, fs.unlink might not be available
+        // This is a fallback that should not happen in real usage
+        throw new Error('unlink not available');
+      }
     } catch (error: any) {
       if (error.code === 'ENOENT') {
         // File doesn't exist, which is fine
@@ -184,6 +204,11 @@ export class TokenManager {
       }
       
       const [ivHex, authTagHex, ciphertext] = parts;
+      
+      if (!ivHex || !authTagHex || !ciphertext) {
+        throw new Error('Failed to decrypt');
+      }
+      
       const iv = Buffer.from(ivHex, 'hex');
       const authTag = Buffer.from(authTagHex, 'hex');
       
