@@ -18,6 +18,7 @@
     "test:coverage": "jest --coverage",
     "test:oauth": "ts-node scripts/test-oauth.ts",
     "test:drive": "ts-node scripts/test-drive.ts",
+    "test:photos": "ts-node scripts/test-photos.ts",
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "format": "prettier --write .",
