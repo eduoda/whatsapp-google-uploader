@@ -1,0 +1,58 @@
+{
+  "name": "whatsapp-uploader-cli",
+  "version": "1.0.0",
+  "description": "CLI application for WhatsApp Google Uploader",
+  "main": "dist/index.js",
+  "bin": {
+    "whatsapp-uploader": "./dist/bin/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "clean": "rimraf dist",
+    "dev": "npm run build && node dist/bin/cli.js",
+    "start": "node dist/bin/cli.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "keywords": [
+    "cli",
+    "whatsapp",
+    "google-photos",
+    "google-drive",
+    "uploader"
+  ],
+  "author": "WhatsApp Google Uploader",
+  "license": "MIT",
+  "dependencies": {
+    "@whatsapp-uploader/oauth": "^1.0.0",
+    "@whatsapp-uploader/google-drive": "^1.0.0",
+    "@whatsapp-uploader/google-photos": "^1.0.0",
+    "@whatsapp-uploader/scanner": "^1.0.0",
+    "@whatsapp-uploader/proxy": "^1.0.0",
+    "commander": "^11.0.0",
+    "inquirer": "^9.2.10",
+    "ora": "^7.0.1",
+    "chalk": "^5.3.0",
+    "winston": "^3.10.0",
+    "fs-extra": "^11.1.1",
+    "progress": "^2.0.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.0",
+    "@types/inquirer": "^9.0.3",
+    "@types/fs-extra": "^11.0.1",
+    "typescript": "^5.1.6",
+    "rimraf": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

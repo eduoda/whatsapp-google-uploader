@@ -1,0 +1,48 @@
+{
+  "name": "@whatsapp-uploader/google-drive",
+  "version": "1.0.0",
+  "description": "Google Drive API integration library for WhatsApp Google Uploader",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "clean": "rimraf dist",
+    "dev": "npm run build:watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "keywords": [
+    "google-drive",
+    "api",
+    "upload",
+    "whatsapp-uploader"
+  ],
+  "author": "WhatsApp Google Uploader",
+  "license": "MIT",
+  "peerDependencies": {
+    "googleapis": "^126.0.0",
+    "@whatsapp-uploader/oauth": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.0",
+    "@types/mime-types": "^2.1.1",
+    "typescript": "^5.1.6",
+    "rimraf": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/whatsapp-google-uploader.git",
+    "directory": "packages/google-drive"
+  }
+}

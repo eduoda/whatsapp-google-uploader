@@ -1,0 +1,55 @@
+# Docker Compose for WhatsApp Google Uploader Development
+# AIDEV-NOTE: docker-compose; development environment setup
+
+version: '3.8'
+
+services:
+  whatsapp-uploader:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    container_name: whatsapp-uploader-dev
+    volumes:
+      # Mount source code for development
+      - .:/app
+      - /app/node_modules
+      # Mount data directory for persistence
+      - whatsapp_data:/data
+      # Mount WhatsApp directory (adjust path as needed)
+      - ${WHATSAPP_PATH:-./test-data}:/whatsapp:ro
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      - DATA_DIR=/data
+      - WHATSAPP_DIR=/whatsapp
+    networks:
+      - whatsapp-network
+    stdin_open: true
+    tty: true
+    command: npm run dev
+
+  # Test container for running tests
+  test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    container_name: whatsapp-uploader-test
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=test
+      - LOG_LEVEL=error
+    networks:
+      - whatsapp-network
+    command: npm test
+    profiles:
+      - test
+
+volumes:
+  whatsapp_data:
+    driver: local
+
+networks:
+  whatsapp-network:
+    driver: bridge

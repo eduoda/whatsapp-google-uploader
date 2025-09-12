@@ -1,0 +1,29 @@
+{
+  "name": "Windows Desktop",
+  "platform": "win32",
+  "description": "Configuration for Windows desktop systems",
+  "paths": {
+    "whatsapp": "%USERPROFILE%/Documents/WhatsApp",
+    "data": "%APPDATA%/whatsapp-uploader",
+    "logs": "%APPDATA%/whatsapp-uploader/logs",
+    "cache": "%LOCALAPPDATA%/whatsapp-uploader/cache"
+  },
+  "permissions": {
+    "storage": "automatic",
+    "required": [],
+    "notes": "No special permissions required on Windows"
+  },
+  "environment": {
+    "NODE_ENV": "production",
+    "LOG_LEVEL": "info",
+    "STREAM_CHUNK_SIZE": 65536,
+    "MAX_MEMORY_USAGE": 512,
+    "DEFAULT_BATCH_SIZE": 10,
+    "DEFAULT_CONCURRENT_UPLOADS": 3
+  },
+  "optimizations": {
+    "lowMemoryMode": false,
+    "reducedConcurrency": false,
+    "batteryOptimized": false
+  }
+}
