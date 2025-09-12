@@ -11,7 +11,7 @@ module.exports = {
   ],
   
   // Module path mapping for TypeScript paths
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@whatsapp-uploader/oauth$': '<rootDir>/packages/oauth/src',
     '^@whatsapp-uploader/google-drive$': '<rootDir>/packages/google-drive/src',
     '^@whatsapp-uploader/google-photos$': '<rootDir>/packages/google-photos/src',
