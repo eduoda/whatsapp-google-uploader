@@ -8,6 +8,7 @@ export interface OAuthConfig {
   clientSecret: string;
   redirectUri: string;
   tokenStoragePath: string;
+  encryptionKey?: string;
 }
 
 export interface AuthenticationResult {

@@ -24,7 +24,10 @@ export class OAuthManager {
       config.redirectUri
     );
     
-    this.tokenManager = new TokenManager(config.tokenStoragePath);
+    this.tokenManager = new TokenManager({
+      tokenPath: config.tokenStoragePath,
+      encryptionKey: config.encryptionKey || 'default-key-change-in-production-32-chars'
+    });
     this.flowManager = new FlowManager(this.oauth2Client);
     this.scopeValidator = new ScopeValidator();
   }
@@ -57,7 +60,7 @@ export class OAuthManager {
    * AIDEV-NOTE: oauth-token-access; handles token refresh automatically
    */
   async getValidToken(): Promise<string> {
-    const storedTokens = await this.tokenManager.getStoredTokens();
+    const storedTokens = await this.tokenManager.loadTokens();
     
     if (!storedTokens) {
       throw new Error('No authentication found. Please run authentication first.');
@@ -81,7 +84,7 @@ export class OAuthManager {
    * AIDEV-TODO: implement-oauth-revoke; add token revocation
    */
   async revokeAccess(): Promise<void> {
-    const storedTokens = await this.tokenManager.getStoredTokens();
+    const storedTokens = await this.tokenManager.loadTokens();
     
     if (storedTokens?.access_token) {
       await this.oauth2Client.revokeToken(storedTokens.access_token);
@@ -94,7 +97,38 @@ export class OAuthManager {
    * Check authentication status - implements architecture interface
    * AIDEV-NOTE: oauth-status-check; quick authentication status check
    */
-  isAuthenticated(): Promise<boolean> {
+  isAuthenticated(): boolean {
+    const credentials = this.oauth2Client.credentials;
+    
+    if (!credentials || !credentials.access_token) {
+      return false;
+    }
+
+    // Check if token is valid (can be mocked in tests)
+    return this.isTokenValid(credentials);
+  }
+
+  /**
+   * Token validity check - can be mocked in tests
+   */
+  private isTokenValid(token: any): boolean {
+    if (!token || !token.access_token) {
+      return false;
+    }
+
+    // Check if token is expired
+    if (token.expiry_date) {
+      return !this.isTokenExpired(token.expiry_date);
+    }
+
+    // If no expiry date, assume valid
+    return true;
+  }
+
+  /**
+   * Async version of authentication check with full token validation
+   */
+  async hasValidTokensAsync(): Promise<boolean> {
     return this.tokenManager.hasValidTokens();
   }
 
@@ -102,7 +136,7 @@ export class OAuthManager {
    * Get token information for debugging
    */
   async getTokenInfo(): Promise<TokenInfo | null> {
-    const tokens = await this.tokenManager.getStoredTokens();
+    const tokens = await this.tokenManager.loadTokens();
     
     if (!tokens) {
       return null;
@@ -123,5 +157,70 @@ export class OAuthManager {
     // Consider token expired 5 minutes before actual expiry
     const bufferTime = 5 * 60 * 1000; // 5 minutes in ms
     return Date.now() >= (expiryDate - bufferTime);
+  }
+
+  /**
+   * Validate token format for property-based testing
+   * AIDEV-NOTE: token-validation; validates OAuth token structure
+   */
+  private validateTokenFormat(token: any): boolean {
+    if (!token || typeof token !== 'object') {
+      return false;
+    }
+
+    // Check required fields
+    if (!token.access_token || typeof token.access_token !== 'string') {
+      return false;
+    }
+
+    if (!token.token_type || typeof token.token_type !== 'string') {
+      return false;
+    }
+
+    // Check optional but important fields
+    if (token.expires_in !== undefined && typeof token.expires_in !== 'number') {
+      return false;
+    }
+
+    if (token.expiry_date !== undefined && typeof token.expiry_date !== 'number') {
+      return false;
+    }
+
+    if (token.refresh_token !== undefined && token.refresh_token !== null && typeof token.refresh_token !== 'string') {
+      return false;
+    }
+
+    if (token.scope !== undefined && typeof token.scope !== 'string') {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Error categorization methods for retry logic
+   * AIDEV-NOTE: error-categorization; helps determine retry strategies
+   */
+  private isAuthError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+    return message.includes('invalid') || 
+           message.includes('unauthorized') || 
+           message.includes('forbidden') ||
+           message.includes('expired');
+  }
+
+  private isNetworkError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+    return message.includes('enotfound') || 
+           message.includes('econnrefused') || 
+           message.includes('timeout') ||
+           message.includes('network');
+  }
+
+  private isQuotaError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+    return message.includes('quota') || 
+           message.includes('rate limit') || 
+           message.includes('too many requests');
   }
 }

@@ -13,6 +13,11 @@ export interface StoredTokens extends Credentials {
   scope?: string;
   token_type?: string | null;
   id_token?: string | null;
+  
+  // Additional OAuth fields for comprehensive token handling
+  expires_in?: number; // Token lifetime in seconds
+  created_at?: number; // When token was created (timestamp)
+  exp?: number; // JWT expiry (timestamp in seconds)
 }
 
 export interface TokenValidationResult {
