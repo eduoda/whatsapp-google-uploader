@@ -73,12 +73,5 @@ module.exports = {
   // Mock configuration
   clearMocks: true,
   restoreMocks: true,
-  resetMocks: true,
-  
-  // Globals
-  globals: {
-    'ts-jest': {
-      isolatedModules: true
-    }
-  }
+  resetMocks: true
 };
