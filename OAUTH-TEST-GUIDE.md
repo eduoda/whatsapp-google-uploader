@@ -78,7 +78,15 @@ npm run test:oauth
    - Acesso ao Google Drive
    - Acesso ao Google Photos
 6. Você será redirecionado para `http://localhost:3000/callback?code=XXXXX`
-7. **Copie o código** da URL (o valor após `code=`)
+   
+   **⚠️ IMPORTANTE:** Você verá um erro "File not found" - **ISSO É NORMAL!**
+   
+   Não há servidor rodando localmente. O importante é o código na URL.
+
+7. **Copie APENAS o código** da URL:
+   - O código está após `code=` e antes de `&scope`
+   - Exemplo: `4/0AVMBsJgdZm1nE0qxxk2vso9QDkaYiHvp3ssywZ_7GvLQZc8Cqs7x04yDFz2gR-Q8Dx2SBA`
+   
 8. **Cole o código** no terminal quando solicitado
 9. O script validará e salvará seus tokens
 

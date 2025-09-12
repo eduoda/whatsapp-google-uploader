@@ -93,13 +93,15 @@ async function testOAuth() {
 
     // Start authentication flow
     console.log('\n🚀 Starting OAuth authentication flow...\n');
-    console.log('Instructions:');
-    console.log('1. A URL will be displayed below');
-    console.log('2. Open it in your browser');
-    console.log('3. Log in with your Google account');
-    console.log('4. Grant the requested permissions');
-    console.log('5. Copy the authorization code from the redirect URL');
-    console.log('6. Paste it here\n');
+    console.log('⚠️  IMPORTANTE: Não há servidor local rodando!');
+    console.log('   Após autorizar, você verá um erro "File not found" - isso é NORMAL!\n');
+    console.log('📋 Instruções:');
+    console.log('1. Uma URL será exibida abaixo');
+    console.log('2. Abra no navegador e faça login com Google');
+    console.log('3. Autorize as permissões solicitadas');
+    console.log('4. Você será redirecionado para localhost:3000 (erro esperado)');
+    console.log('5. Copie APENAS o código da URL (parte após "code=")');
+    console.log('6. Cole o código aqui\n');
 
     // Authenticate
     const result = await oauthManager.authenticate();

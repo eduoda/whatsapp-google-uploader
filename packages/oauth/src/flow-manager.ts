@@ -16,11 +16,13 @@ export class FlowManager {
     const authUrl = await this.getAuthUrl(scopes);
     
     // Display URL to user
-    console.log('\n🔗 Please visit this URL to authorize the application:');
-    console.log(authUrl);
-    console.log('\n📝 After authorization, you will be redirected to a URL like:');
-    console.log('   http://localhost:3000/callback?code=XXXXX');
-    console.log('\n✂️  Copy the code parameter from the URL and paste it below:\n');
+    console.log('\n🔗 Abra esta URL no navegador para autorizar:');
+    console.log('\n' + authUrl);
+    console.log('\n⚠️  ATENÇÃO: Após autorizar, você verá "File not found" - ISSO É NORMAL!');
+    console.log('\n📝 A URL será algo como:');
+    console.log('   http://localhost:3000/callback?code=4/0AVMBsJgdZm1nE0q...');
+    console.log('\n✂️  Copie APENAS o código (a parte após "code=" e antes de "&scope"):\n');
+    console.log('   Exemplo: 4/0AVMBsJgdZm1nE0qxxk2vso9QDkaYiHvp3ssywZ_7GvLQZc8Cqs7x04yDFz2gR-Q8Dx2SBA\n');
     
     // Get code from user
     const code = await this.promptForCode();
@@ -67,7 +69,7 @@ export class FlowManager {
     });
 
     return new Promise((resolve) => {
-      rl.question('Enter authorization code: ', (code) => {
+      rl.question('Cole o código de autorização aqui: ', (code) => {
         rl.close();
         resolve(code.trim());
       });
