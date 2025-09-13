@@ -58,10 +58,18 @@ if [ ! -d "$HOME/storage" ]; then
     exit 1
 fi
 
+# Step 6: Use simplified package.json for Termux
+echo -e "${YELLOW}📦 Configurando package.json simplificado para Termux...${NC}"
+if [ -f package.termux.json ]; then
+    cp package.json package.original.json 2>/dev/null
+    cp package.termux.json package.json
+    echo -e "${GREEN}✅ Usando package.json simplificado${NC}"
+fi
+
 echo -e "${GREEN}✅ Ambiente Termux preparado!${NC}"
 echo ""
-echo "Agora instale as dependências:"
-echo "  npm install --omit=dev"
+echo "Agora instale as dependências (apenas 3 pacotes!):"
+echo "  npm install"
 echo ""
 echo "Depois teste o scanner:"
 if [ -n "$WHATSAPP_PATH" ]; then
@@ -71,6 +79,6 @@ else
 fi
 echo ""
 echo "💡 Sistema configurado para usar Google Sheets como banco de dados"
-echo "  • Não requer SQLite ou outros bancos locais"
+echo "  • Apenas 3 dependências: google-auth, googleapis, mime-types"
+echo "  • Sem compilação nativa, sem SQLite"
 echo "  • Toda persistência é feita na nuvem"
-echo "  • Use --omit=dev para pular dependências de desenvolvimento"
