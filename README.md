@@ -24,6 +24,26 @@ npm install -g whatsapp-google-uploader
 npx whatsapp-google-uploader --help
 ```
 
+### Termux (Android) Installation
+
+```bash
+# 1. Install Termux dependencies
+pkg update && pkg install nodejs python git build-essential
+
+# 2. Clone the repository
+git clone https://github.com/eduoda/whatsapp-google-uploader.git
+cd whatsapp-google-uploader
+
+# 3. Setup Termux environment
+bash scripts/setup-termux.sh
+
+# 4. Install without problematic dependencies
+npm run install:termux
+
+# 5. Grant storage access
+termux-setup-storage
+```
+
 ### Setup
 
 1. **Configure Google APIs**

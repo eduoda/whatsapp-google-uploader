@@ -20,6 +20,8 @@
     "test:drive": "ts-node scripts/test-drive.ts",
     "test:photos": "ts-node scripts/test-photos.ts",
     "test:scanner": "ts-node scripts/test-scanner.ts",
+    "setup:termux": "bash scripts/setup-termux.sh",
+    "install:termux": "node scripts/install-termux.js",
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "format": "prettier --write .",

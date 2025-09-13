@@ -1,0 +1,50 @@
+{
+  "name": "whatsapp-google-uploader",
+  "version": "1.0.0",
+  "description": "Production-ready CLI application for uploading WhatsApp media to Google Photos and Google Drive",
+  "main": "./apps/cli/dist/index.js",
+  "bin": {
+    "whatsapp-uploader": "./apps/cli/dist/bin/cli.js"
+  },
+  "scripts": {
+    "build": "echo 'Build not required for Termux - using pre-built version'",
+    "test:oauth": "node scripts/test-oauth.js",
+    "test:drive": "node scripts/test-drive.js",
+    "test:photos": "node scripts/test-photos.js",
+    "test:scanner": "node scripts/test-scanner.js",
+    "scan": "node apps/cli/dist/bin/cli.js scan",
+    "upload": "node apps/cli/dist/bin/cli.js upload"
+  },
+  "keywords": [
+    "whatsapp",
+    "google-photos",
+    "google-drive",
+    "backup",
+    "media",
+    "uploader",
+    "cli",
+    "nodejs",
+    "termux"
+  ],
+  "author": "WhatsApp Google Uploader",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.0.0",
+    "google-auth-library": "^9.0.0",
+    "googleapis": "^126.0.1",
+    "inquirer": "^9.2.10",
+    "mime-types": "^2.1.35",
+    "ora": "^7.0.1",
+    "progress": "^2.0.3",
+    "dotenv": "^16.0.0"
+  },
+  "optionalDependencies": {
+    "sqlite3": "^5.1.6"
+  },
+  "_comment": "This is a minimal package.json for Termux environment without native compilation dependencies"
+}
