@@ -70,7 +70,7 @@ fi
 echo -e "${GREEN}✅ Ambiente Termux preparado!${NC}"
 echo ""
 echo "Agora instale as dependências:"
-echo "  npm install --omit=optional --omit=dev"
+echo "  npm install --omit=dev"
 echo ""
 echo "Depois teste o scanner:"
 if [ -n "$WHATSAPP_PATH" ]; then
@@ -80,6 +80,6 @@ else
 fi
 echo ""
 echo "💡 Dicas:"
-echo "  • Use --omit=optional para pular sqlite3 e outras dependências nativas"
 echo "  • Use --omit=dev para pular dependências de desenvolvimento"
-echo "  • Se ainda houver erro, use: npm install --force --omit=optional --omit=dev"
+echo "  • better-sqlite3 tem melhor suporte ao ARM do que sqlite3"
+echo "  • Se ainda houver erro, use: npm install --force --omit=dev"

@@ -1,6 +1,6 @@
 /**
  * Mock Database for testing
- * AIDEV-NOTE: database-mocks; in-memory SQLite-compatible database for testing
+ * AIDEV-NOTE: database-mocks; in-memory better-sqlite3-compatible database for testing
  */
 
 export interface MockTable {
@@ -14,6 +14,26 @@ export interface MockTransaction {
   id: string;
   operations: Array<{ type: 'insert' | 'update' | 'delete'; table: string; data: any }>;
   isActive: boolean;
+}
+
+export class MockPreparedStatement {
+  constructor(private db: MockDatabase, private sql: string) {}
+
+  run(params: any[] = []): { lastInsertRowid: number; changes: number } {
+    return this.db.run(this.sql, params);
+  }
+
+  get<T = any>(params: any[] = []): T | undefined {
+    return this.db.get(this.sql, params);
+  }
+
+  all<T = any>(params: any[] = []): T[] {
+    return this.db.all(this.sql, params);
+  }
+
+  finalize(): void {
+    // Mock finalize - no-op
+  }
 }
 
 export class MockDatabase {
@@ -111,8 +131,8 @@ export class MockDatabase {
     });
   }
 
-  // Execute SQL query
-  async run(sql: string, params: any[] = []): Promise<{ lastID?: number; changes?: number }> {
+  // Execute SQL query (better-sqlite3 style - synchronous)
+  run(sql: string, params: any[] = []): { lastInsertRowid: number; changes: number } {
     this.queryLog.push(sql);
     
     if (this.shouldFail) {
@@ -131,23 +151,23 @@ export class MockDatabase {
       return this.handleCreate(sql, params);
     }
 
-    return { changes: 0 };
+    return { lastInsertRowid: 0, changes: 0 };
   }
 
-  // Get single row
-  async get(sql: string, params: any[] = []): Promise<any | undefined> {
+  // Get single row (better-sqlite3 style - synchronous)
+  get(sql: string, params: any[] = []): any | undefined {
     this.queryLog.push(sql);
     
     if (this.shouldFail) {
       throw new Error(this.failureMessage);
     }
 
-    const results = await this.all(sql, params);
+    const results = this.all(sql, params);
     return results.length > 0 ? results[0] : undefined;
   }
 
-  // Get all rows
-  async all(sql: string, params: any[] = []): Promise<any[]> {
+  // Get all rows (better-sqlite3 style - synchronous)
+  all(sql: string, params: any[] = []): any[] {
     this.queryLog.push(sql);
     
     if (this.shouldFail) {
@@ -163,7 +183,12 @@ export class MockDatabase {
     return [];
   }
 
-  private handleInsert(sql: string, params: any[]): { lastID: number; changes: number } {
+  // Prepare statement (better-sqlite3 style)
+  prepare(sql: string): MockPreparedStatement {
+    return new MockPreparedStatement(this, sql);
+  }
+
+  private handleInsert(sql: string, params: any[]): { lastInsertRowid: number; changes: number } {
     const match = sql.match(/insert\s+into\s+(\w+)/i);
     if (!match) throw new Error('Invalid INSERT statement');
 
@@ -188,7 +213,7 @@ export class MockDatabase {
     }
 
     table.rows.set(id, rowData);
-    return { lastID: table.rows.size, changes: 1 };
+    return { lastInsertRowid: table.rows.size, changes: 1 };
   }
 
   private handleUpdate(sql: string, params: any[]): { changes: number } {
@@ -255,8 +280,26 @@ export class MockDatabase {
     return { changes: 0 };
   }
 
-  // Transaction support
-  async beginTransaction(): Promise<string> {
+  // Transaction support (better-sqlite3 style)
+  transaction<T>(fn: () => T): T {
+    const transactionId = `tx_${Date.now()}_${Math.random()}`;
+    this.transactions.set(transactionId, {
+      id: transactionId,
+      operations: [],
+      isActive: true
+    });
+    
+    try {
+      const result = fn();
+      this.commitTransaction(transactionId);
+      return result;
+    } catch (error) {
+      this.rollbackTransaction(transactionId);
+      throw error;
+    }
+  }
+
+  beginTransaction(): string {
     const transactionId = `tx_${Date.now()}_${Math.random()}`;
     this.transactions.set(transactionId, {
       id: transactionId,
@@ -266,7 +309,7 @@ export class MockDatabase {
     return transactionId;
   }
 
-  async commitTransaction(transactionId: string): Promise<void> {
+  commitTransaction(transactionId: string): void {
     const transaction = this.transactions.get(transactionId);
     if (!transaction || !transaction.isActive) {
       throw new Error('Invalid or inactive transaction');
@@ -277,7 +320,7 @@ export class MockDatabase {
     this.transactions.delete(transactionId);
   }
 
-  async rollbackTransaction(transactionId: string): Promise<void> {
+  rollbackTransaction(transactionId: string): void {
     const transaction = this.transactions.get(transactionId);
     if (!transaction) {
       throw new Error('Invalid transaction');
@@ -313,9 +356,10 @@ export class MockDatabase {
     });
   }
 
-  close(): Promise<void> {
-    // Mock database close
-    return Promise.resolve();
+  close(): void {
+    // Mock database close - synchronous
+    this.tables.clear();
+    this.transactions.clear();
   }
 }
 

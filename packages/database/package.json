@@ -1,7 +1,7 @@
 {
-  "name": "@whatsapp-uploader/proxy",
+  "name": "@whatsapp-uploader/database",
   "version": "1.0.0",
-  "description": "Core orchestrator library for WhatsApp Google Uploader with rate limiting and deduplication",
+  "description": "Database abstraction layer for WhatsApp Google Uploader using better-sqlite3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -20,21 +20,19 @@
     "lint:fix": "eslint src --ext .ts --fix"
   },
   "keywords": [
-    "orchestrator",
-    "rate-limiting",
-    "deduplication",
-    "upload-management"
+    "database",
+    "sqlite3",
+    "better-sqlite3",
+    "persistence",
+    "deduplication"
   ],
   "author": "WhatsApp Google Uploader",
   "license": "MIT",
   "peerDependencies": {
-    "@whatsapp-uploader/oauth": "^1.0.0",
-    "@whatsapp-uploader/google-drive": "^1.0.0",
-    "@whatsapp-uploader/google-photos": "^1.0.0",
-    "@whatsapp-uploader/scanner": "^1.0.0",
     "better-sqlite3": "^9.0.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
     "@types/node": "^20.5.0",
     "typescript": "^5.1.6",
     "rimraf": "^5.0.1"
@@ -45,6 +43,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/user/whatsapp-google-uploader.git",
-    "directory": "packages/proxy"
+    "directory": "packages/database"
   }
 }

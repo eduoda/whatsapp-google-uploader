@@ -34,7 +34,7 @@ This document provides a comprehensive overview of all technologies, frameworks,
 - **path**: Cross-platform path manipulation
 
 ### Data Storage
-- **sqlite3**: Embedded database for progress tracking and deduplication
+- **better-sqlite3**: Embedded database for progress tracking and deduplication (synchronous, ARM-compatible)
 
 ## Development Dependencies
 - **jest**: Testing framework for unit, integration, and e2e tests

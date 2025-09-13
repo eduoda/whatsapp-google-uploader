@@ -50,12 +50,12 @@ The WhatsApp Google Uploader is a production-ready Node.js CLI application desig
   - **Pros:** No disk space overhead, faster processing, better memory efficiency
   - **Cons:** More complex error handling, requires careful stream management
 
-### ADR-003: SQLite for Progress and Deduplication
-- **Status:** Accepted
-- **Context:** Need persistent storage for upload progress and SHA-256 deduplication database
-- **Decision:** Use SQLite3 with structured schema for all persistence needs
+### ADR-003: better-sqlite3 for Progress and Deduplication (Updated)
+- **Status:** Accepted (Updated 2025-09-13)
+- **Context:** Need persistent storage for upload progress and SHA-256 deduplication database. Original sqlite3 had compilation issues on ARM/Termux platforms.
+- **Decision:** Use better-sqlite3 with structured schema for all persistence needs
 - **Consequences:**
-  - **Pros:** Zero-configuration, ACID compliance, cross-platform compatibility
+  - **Pros:** Zero-configuration, ACID compliance, cross-platform compatibility, ARM/Termux support, synchronous operations
   - **Cons:** Single-writer limitation (acceptable for CLI usage)
 
 ### ADR-004: Proxy Library for API Management
@@ -110,7 +110,7 @@ System_Boundary(uploader, "WhatsApp Google Uploader") {
     Container(photos, "Google Photos Library", "Node.js", "Google Photos API integration")
     Container(proxy, "Proxy Library", "Node.js", "API management, rate limiting, deduplication")
     Container(scanner, "WhatsApp Scanner", "Node.js", "Directory scanning and file indexing")
-    ContainerDb(database, "SQLite Database", "SQLite3", "Progress tracking and deduplication")
+    ContainerDb(database, "SQLite Database", "better-sqlite3", "Progress tracking and deduplication")
     ContainerDb(filesystem, "File System", "Local Storage", "WhatsApp media files and logs")
 }
 
@@ -145,7 +145,7 @@ Container(cli, "CLI Application", "Node.js", "Command-line interface")
 Container(drive, "Google Drive Library", "Node.js", "Drive API integration")
 Container(photos, "Google Photos Library", "Node.js", "Photos API integration")
 Container(scanner, "WhatsApp Scanner", "Node.js", "File scanning")
-ContainerDb(database, "SQLite Database", "SQLite3", "Persistence")
+ContainerDb(database, "SQLite Database", "better-sqlite3", "Persistence")
 
 Container_Boundary(proxy, "Proxy Library") {
     Component(uploader, "Upload Orchestrator", "Class", "Coordinates upload workflow")

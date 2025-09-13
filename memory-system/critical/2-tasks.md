@@ -127,10 +127,22 @@
 - Depends on: TASK-006 (Proxy library)
 - Phase: Phase 4 - CLI & UX
 
-## [ ] database - TASK-008 - Database Schema and Migrations
+## [✓] architect - TASK-011 - SQLite3 to better-sqlite3 Migration **COMPLETED**
+- Priority: 1
+- Description: Migrate from sqlite3 to better-sqlite3 for better Termux/ARM compatibility and performance
+- Depends on: Current project state analysis
+- Phase: Architecture Update
+- Started: 2025-09-13 14:30
+- Branch: TASK-011-architect
+- Conflicts: TASK-008 (database implementation - updated with better-sqlite3 spec)
+- Planning: TASK-011-architect-planning.md
+- Completed: 2025-09-13 15:30
+- Report: TASK-011-architect-report.md
+
+## [ ] database - TASK-008 - Database Schema and Migrations (Updated)
 - Priority: 2
-- Description: Design and implement SQLite schema for progress tracking, deduplication, and error handling
-- Depends on: TASK-001 (architecture approval), TASK-010 (project structure)
+- Description: Design and implement better-sqlite3 schema for progress tracking, deduplication, and error handling
+- Depends on: TASK-011 (migration completed), TASK-001 (architecture approval), TASK-010 (project structure)  
 - Phase: Phase 1 - Foundation Libraries
 
 ## [✓] seer - TASK-009 - Comprehensive Test Suite **COMPLETED**
