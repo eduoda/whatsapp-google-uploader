@@ -13,6 +13,23 @@
 - **Rate Limiting** - Respectful API usage with exponential backoff
 - **Enterprise Reliability** - Comprehensive error handling and retry mechanisms
 
+## Project Status
+
+⚠️ **In Development** - Core functionality implemented, CLI pending.
+
+### What's Working ✅
+- Google OAuth authentication
+- Google Drive uploads
+- Google Photos uploads  
+- WhatsApp directory scanning
+- Google Sheets database
+- File deduplication with SHA-256
+
+### What's Pending 🚧
+- CLI commands (scan, upload, status)
+- Complete upload orchestration
+- Progress tracking UI
+
 ## Quick Start
 
 ### Installation
@@ -86,14 +103,13 @@ npm run test:scanner
 
 ## Architecture
 
-This application follows a modular library architecture:
+Simplified single-package architecture:
 
-- **@whatsapp-uploader/oauth** - Google OAuth2 authentication
-- **@whatsapp-uploader/google-drive** - Google Drive API integration
-- **@whatsapp-uploader/google-photos** - Google Photos API integration  
-- **@whatsapp-uploader/scanner** - WhatsApp directory scanning
-- **@whatsapp-uploader/sheets-database** - Google Sheets cloud database
-- **@whatsapp-uploader/proxy** - Core orchestration and rate limiting
+- **src/google-apis/** - Unified Google APIs (OAuth, Drive, Photos)
+- **src/scanner/** - WhatsApp directory scanning
+- **src/database/** - Google Sheets cloud database
+- **src/uploader/** - Core upload orchestration
+- **src/cli/** - Command-line interface
 
 ## Development
 
@@ -103,43 +119,59 @@ This application follows a modular library architecture:
 - npm 6+
 - Google Account with API access
 
-### Build from Source
+### Setup
+
+#### 1. Get Google Credentials
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create or select a project
+3. Enable these APIs:
+   - Google Drive API
+   - Google Photos Library API
+   - Google Sheets API
+4. Create OAuth 2.0 credentials
+5. Download as `credentials.json` to project root
+
+#### 2. Build from Source
 
 ```bash
 # Clone repository
-git clone https://github.com/user/whatsapp-google-uploader.git
+git clone https://github.com/eduoda/whatsapp-google-uploader.git
 cd whatsapp-google-uploader
 
 # Install dependencies
-npm install
+npm install --production  # For users (no dev dependencies)
+npm install              # For developers
 
-# Build all packages
+# Build project
 npm run build
 
-# Run system check
-npm run check
+# Test components
+npm test                 # Run all tests
+```
 
-# Run tests
-npm test
+### Testing
+
+```bash
+# Test all components
+npm test                    # Runs test-all.js
+npm run test:components     # Test each component separately
+npm run test:scanner        # Scanner only (Termux-friendly)
+
+# Manual testing
+node test-all.js            # Direct test with detailed output
+./test-components.sh        # Component by component
 ```
 
 ### Development Commands
 
 ```bash
-# Build and watch for changes
-npm run dev
+# Build TypeScript
+npm run build              # Build once
+npm run dev                # Build and watch
 
-# Run tests with watch mode
-npm run test:watch
-
-# Lint code
-npm run lint
-
-# Format code
-npm run format
-
-# Type checking
-npm run type-check
+# Code quality
+npm run lint               # Check code style
+npm run lint:fix           # Fix code style
 ```
 
 ## Platform Support
@@ -176,18 +208,21 @@ npm install -g whatsapp-google-uploader
 
 ## Configuration
 
-Configuration is managed through environment variables and config files:
+### Google Sheets Database
+The system automatically creates a Google Sheets database on first run:
+- Spreadsheet: `WhatsApp-Uploader-Database`
+- Sheet 1: `uploaded_files` - Tracks uploaded files with SHA-256 hashes
+- Sheet 2: `upload_progress` - Tracks progress per chat
 
-- Copy `.env.template` to `.env` and configure
-- Platform-specific configs in `config/platforms/`
-- Google Sheets database automatically created on first run
+### OAuth Token
+After first authentication, token is saved to `token.json` for future use.
 
 ## Security
 
 - **Minimal OAuth Scopes** - Only requests necessary permissions
-- **Encrypted Token Storage** - Secure credential storage
+- **Simple Token Storage** - OAuth token in local JSON file (appropriate for personal use)
 - **Cloud-Based Database** - All persistence in Google Sheets (no local database files)
-- **No Local Data Storage** - No sensitive data stored on device
+- **No Complex Encryption** - Simplified for personal backup tool
 - **Secure File Access** - Validates all file paths and permissions
 
 ## Performance
