@@ -48,8 +48,9 @@ npx whatsapp-google-uploader --help
 # 1. Install Node.js in Termux
 pkg update && pkg install nodejs
 
-# 2. Grant storage access (important!)
+# 2. Grant storage access (IMPORTANT!)
 termux-setup-storage
+# Accept the permission on Android
 
 # 3. Clone the repository
 git clone https://github.com/eduoda/whatsapp-google-uploader.git
@@ -61,9 +62,15 @@ bash scripts/setup-termux.sh
 # 5. Install production dependencies
 npm install --production
 
-# 6. Test scanner
-npm run test:scanner
+# 6. Build and run
+npm run build
+node dist/cli.js scan
 ```
+
+**Why it works on Termux:**
+- ✅ **Zero native compilation** - No SQLite, no node-gyp
+- ✅ **Cloud persistence** - Google Sheets instead of local files
+- ✅ **Minimal dependencies** - Only essential packages
 
 ### Setup
 
@@ -122,14 +129,32 @@ Simplified single-package architecture:
 ### Setup
 
 #### 1. Get Google Credentials
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create or select a project
 3. Enable these APIs:
    - Google Drive API
    - Google Photos Library API
    - Google Sheets API
-4. Create OAuth 2.0 credentials
-5. Download as `credentials.json` to project root
+4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
+5. **IMPORTANT**: Choose **"Desktop app"** as application type (NOT "Web application")
+6. Name it "WhatsApp Uploader" or similar
+7. Download JSON → Save as `credentials.json` in project root
+
+**Manual Creation (if needed):**
+```json
+{
+  "installed": {
+    "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+    "project_id": "your-project-id",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_secret": "YOUR_CLIENT_SECRET",
+    "redirect_uris": ["http://localhost"]
+  }
+}
+```
 
 #### 2. Build from Source
 
@@ -149,18 +174,29 @@ npm run build
 npm test                 # Run all tests
 ```
 
-### Testing
+### First Run and Authentication
 
 ```bash
-# Test all components
-npm test                    # Runs test-all.js
-npm run test:components     # Test each component separately
-npm run test:scanner        # Scanner only (Termux-friendly)
+# Build the project
+npm run build
 
-# Manual testing
-node test-all.js            # Direct test with detailed output
-./test-components.sh        # Component by component
+# Run authentication (will open browser)
+node dist/cli.js auth
+
+# This will:
+# 1. Open browser for Google login
+# 2. Save token to token.json
+# 3. Create Google Sheets database automatically
 ```
+
+**Authentication Process:**
+1. A URL will be displayed in the terminal
+2. Open the URL in your browser
+3. Login with your Google account
+4. Grant the requested permissions
+5. You'll be redirected to localhost (may show error page - this is normal)
+6. Copy the code from the URL and paste it in the terminal
+7. Token will be saved for future use
 
 ### Development Commands
 
@@ -169,9 +205,8 @@ node test-all.js            # Direct test with detailed output
 npm run build              # Build once
 npm run dev                # Build and watch
 
-# Code quality
-npm run lint               # Check code style
-npm run lint:fix           # Fix code style
+# Clean build
+npm run clean              # Remove dist folder
 ```
 
 ## Platform Support
@@ -225,6 +260,12 @@ After first authentication, token is saved to `token.json` for future use.
 - **No Complex Encryption** - Simplified for personal backup tool
 - **Secure File Access** - Validates all file paths and permissions
 
+**Important Security Notes:**
+- Never commit `credentials.json` or `token.json` to git
+- These files are already in `.gitignore`
+- Keep your Google Cloud project private
+- Regularly review API usage in Google Cloud Console
+
 ## Performance
 
 - **Memory Efficient** - Constant memory usage regardless of file size
@@ -237,22 +278,30 @@ After first authentication, token is saved to `token.json` for future use.
 ### Common Issues
 
 1. **Authentication Failed**
-   ```bash
-   whatsapp-uploader auth --reset
-   ```
+   - Delete `token.json` and authenticate again
+   - Check if credentials.json is valid
+   - Verify API is enabled in Google Cloud Console
 
-2. **Permission Denied (Android)**
+2. **"WhatsApp directory not found" (Android)**
    ```bash
+   # Run this first:
    termux-setup-storage
+   # Then check paths:
+   ls /storage/emulated/0/Android/media/com.whatsapp/
    ```
 
-3. **Out of Memory**
-   - Reduce batch size and concurrency in config
-   - Check available system memory
+3. **"invalid_client" error**
+   - Verify Client ID and Secret in credentials.json
+   - Ensure you selected "Desktop app" type in Google Console
 
-4. **Rate Limited**
-   - Wait for quota reset
+4. **"redirect_uri_mismatch"**
+   - Check that redirect URI is exactly "http://localhost"
+   - Recreate credentials as Desktop app type
+
+5. **Rate Limited**
+   - Wait for quota reset (usually hourly)
    - Check Google Cloud Console quotas
+   - Reduce concurrent uploads in .env file
 
 ### Logs and Debugging
 
