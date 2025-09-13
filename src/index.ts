@@ -8,7 +8,7 @@
 export { config, loadCredentials, getGoogleApisConfig, envFileExists, createEnvFile } from './config/index';
 
 // Unified Google APIs (replaces separate Auth, Drive, Photos)
-export { GoogleApis, createGoogleApis } from './google-apis/index';
+export { GoogleApis } from './google-apis/index';
 
 // Core Components
 export * from './scanner/index';

@@ -3,7 +3,6 @@
  * AIDEV-NOTE: simplified-google-apis; consolidated authentication and upload functionality for personal use
  */
 
-import { Readable } from 'stream';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { OAuth2Client } from 'google-auth-library';
@@ -16,7 +15,6 @@ import {
   GoogleApisConfig,
   categorizeFile 
 } from '../types';
-import { config, loadCredentials } from '../config';
 
 // AIDEV-NOTE: google-apis-main-class; unified class replacing TokenManager, DriveManager, PhotosManager
 export class GoogleApis {
@@ -29,17 +27,7 @@ export class GoogleApis {
   constructor(config: GoogleApisConfig) {
     this.config = config;
     this.tokenPath = config.tokenPath;
-    
-    // Default scopes for personal WhatsApp backup
-    const scopes = config.scopes || [
-      'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/photoslibrary.appendonly'
-    ];
-
-    // Initialize OAuth2 client
     this.auth = new OAuth2Client();
-    
-    // Will be initialized after authentication
     this.drive = google.drive({ version: 'v3' });
     this.photos = null;
   }
@@ -139,17 +127,20 @@ export class GoogleApis {
   }
 
   /**
-   * Refresh access token if needed
-   * AIDEV-NOTE: token-refresh; automatic token refresh
+   * Ensure user is authenticated and tokens are fresh
+   * AIDEV-NOTE: centralized-auth; DRY principle - single auth check
    */
-  async refreshTokens(): Promise<void> {
-    try {
+  private async ensureAuthenticated(): Promise<void> {
+    if (!this.isAuthenticated()) {
+      throw new Error('Not authenticated');
+    }
+    
+    // Refresh if needed
+    const tokens = this.auth.credentials;
+    if (tokens.expiry_date && Date.now() > (tokens.expiry_date - 5 * 60 * 1000)) {
       const response = await this.auth.refreshAccessToken();
-      const tokens = response.credentials;
-      this.auth.setCredentials(tokens);
-      await this.saveTokens(tokens as Tokens);
-    } catch (error) {
-      throw new Error(`Token refresh failed: ${(error as Error).message}`);
+      this.auth.setCredentials(response.credentials);
+      await this.saveTokens(response.credentials as Tokens);
     }
   }
 
@@ -158,131 +149,99 @@ export class GoogleApis {
    * AIDEV-NOTE: photos-upload; simplified two-phase Photos upload
    */
   async uploadPhoto(filePath: string, metadata?: UploadMetadata, onProgress?: ProgressCallback): Promise<UploadResult> {
-    if (!this.isAuthenticated()) {
-      throw new Error('Not authenticated');
+    await this.ensureAuthenticated();
+    
+    const stream = require('fs').createReadStream(filePath);
+    const fileName = metadata?.filename || path.basename(filePath);
+    
+    if (onProgress) {
+      const stat = await fs.stat(filePath);
+      onProgress(0, stat.size);
     }
 
-    try {
-      // Ensure token is fresh
-      await this.refreshTokens();
-      
-      const stream = require('fs').createReadStream(filePath);
-      const fileName = metadata?.filename || path.basename(filePath);
-      
-      if (onProgress) {
-        const stat = await fs.stat(filePath);
-        onProgress(0, stat.size);
+    // Phase 1: Upload bytes
+    const uploadResponse = await this.photos.mediaItems.upload({
+      media: { body: stream }
+    });
+    
+    // Phase 2: Create media item
+    const createResponse = await this.photos.mediaItems.batchCreate({
+      requestBody: {
+        newMediaItems: [{
+          description: metadata?.description,
+          simpleMediaItem: {
+            uploadToken: uploadResponse.data,
+            fileName
+          }
+        }]
       }
+    });
 
-      // Phase 1: Upload bytes
-      const uploadResponse = await this.photos.mediaItems.upload({
-        media: { body: stream }
-      });
-      
-      const uploadToken = uploadResponse.data;
-      
-      if (onProgress) {
-        const stat = await fs.stat(filePath);
-        onProgress(stat.size * 0.7, stat.size);
-      }
-
-      // Phase 2: Create media item
-      const createResponse = await this.photos.mediaItems.batchCreate({
-        requestBody: {
-          newMediaItems: [{
-            description: metadata?.description,
-            simpleMediaItem: {
-              uploadToken,
-              fileName
-            }
-          }]
-        }
-      });
-
-      const result = createResponse.data.newMediaItemResults[0];
-      if (result.status.message !== 'Success') {
-        throw new Error(result.status.message);
-      }
-
-      if (onProgress) {
-        const stat = await fs.stat(filePath);
-        onProgress(stat.size, stat.size);
-      }
-
-      return {
-        id: result.mediaItem.id,
-        name: result.mediaItem.filename,
-        mimeType: result.mediaItem.mimeType,
-        url: result.mediaItem.productUrl
-      };
-    } catch (error) {
-      throw new Error(`Photo upload failed: ${(error as Error).message}`);
+    const result = createResponse.data.newMediaItemResults[0];
+    if (result.status.message !== 'Success') {
+      throw new Error(result.status.message);
     }
+
+    if (onProgress) {
+      const stat = await fs.stat(filePath);
+      onProgress(stat.size, stat.size);
+    }
+
+    return {
+      id: result.mediaItem.id,
+      name: result.mediaItem.filename,
+      mimeType: result.mediaItem.mimeType,
+      url: result.mediaItem.productUrl
+    };
   }
 
-  /**
-   * Upload video to Google Photos (same as photo)
-   * AIDEV-NOTE: video-upload; alias for photo upload method
-   */
-  async uploadVideo(filePath: string, metadata?: UploadMetadata, onProgress?: ProgressCallback): Promise<UploadResult> {
-    return this.uploadPhoto(filePath, metadata, onProgress);
-  }
 
   /**
    * Upload document to Google Drive
    * AIDEV-NOTE: drive-upload; simplified Drive upload without resumable complexity
    */
   async uploadDocument(filePath: string, metadata?: UploadMetadata, onProgress?: ProgressCallback): Promise<UploadResult> {
-    if (!this.isAuthenticated()) {
-      throw new Error('Not authenticated');
+    await this.ensureAuthenticated();
+    
+    const stream = require('fs').createReadStream(filePath);
+    const fileName = metadata?.filename || path.basename(filePath);
+    
+    if (onProgress) {
+      const stat = await fs.stat(filePath);
+      onProgress(0, stat.size);
     }
 
-    try {
-      // Ensure token is fresh
-      await this.refreshTokens();
-      
-      const stream = require('fs').createReadStream(filePath);
-      const fileName = metadata?.filename || path.basename(filePath);
-      
-      if (onProgress) {
-        const stat = await fs.stat(filePath);
-        onProgress(0, stat.size);
-      }
-
-      const requestBody: any = {
-        name: fileName,
-        mimeType: metadata?.mimeType || 'application/octet-stream'
-      };
-      
-      if (metadata?.parentId) {
-        requestBody.parents = [metadata.parentId];
-      }
-
-      const response = await this.drive.files.create({
-        requestBody,
-        media: {
-          mimeType: requestBody.mimeType,
-          body: stream
-        },
-        fields: 'id,name,size,mimeType,createdTime,webViewLink'
-      });
-
-      if (onProgress) {
-        const stat = await fs.stat(filePath);
-        onProgress(stat.size, stat.size);
-      }
-
-      return {
-        id: response.data.id!,
-        name: response.data.name!,
-        size: response.data.size ? parseInt(response.data.size) : undefined,
-        mimeType: response.data.mimeType!,
-        createdTime: response.data.createdTime!,
-        url: response.data.webViewLink!
-      };
-    } catch (error) {
-      throw new Error(`Document upload failed: ${(error as Error).message}`);
+    const requestBody: any = {
+      name: fileName,
+      mimeType: metadata?.mimeType || 'application/octet-stream'
+    };
+    
+    if (metadata?.parentId) {
+      requestBody.parents = [metadata.parentId];
     }
+
+    const response = await this.drive.files.create({
+      requestBody,
+      media: {
+        mimeType: requestBody.mimeType,
+        body: stream
+      },
+      fields: 'id,name,size,mimeType,createdTime,webViewLink'
+    });
+
+    if (onProgress) {
+      const stat = await fs.stat(filePath);
+      onProgress(stat.size, stat.size);
+    }
+
+    return {
+      id: response.data.id!,
+      name: response.data.name!,
+      size: response.data.size ? parseInt(response.data.size) : undefined,
+      mimeType: response.data.mimeType!,
+      createdTime: response.data.createdTime!,
+      url: response.data.webViewLink!
+    };
   }
 
   /**
@@ -299,14 +258,9 @@ export class GoogleApis {
       filename: metadata?.filename || path.basename(filePath)
     };
     
-    switch (category) {
-      case 'photo':
-      case 'video':
-        return this.uploadPhoto(filePath, fileMetadata, onProgress);
-      case 'document':
-      default:
-        return this.uploadDocument(filePath, fileMetadata, onProgress);
-    }
+    return category === 'photo' || category === 'video'
+      ? this.uploadPhoto(filePath, fileMetadata, onProgress)
+      : this.uploadDocument(filePath, fileMetadata, onProgress);
   }
 
   /**
@@ -314,31 +268,23 @@ export class GoogleApis {
    * AIDEV-NOTE: drive-folder-creation; simplified folder creation
    */
   async createFolder(name: string, parentId?: string): Promise<string> {
-    if (!this.isAuthenticated()) {
-      throw new Error('Not authenticated');
+    await this.ensureAuthenticated();
+    
+    const requestBody: any = {
+      name,
+      mimeType: 'application/vnd.google-apps.folder'
+    };
+    
+    if (parentId) {
+      requestBody.parents = [parentId];
     }
 
-    try {
-      await this.refreshTokens();
-      
-      const requestBody: any = {
-        name,
-        mimeType: 'application/vnd.google-apps.folder'
-      };
-      
-      if (parentId) {
-        requestBody.parents = [parentId];
-      }
+    const response = await this.drive.files.create({
+      requestBody,
+      fields: 'id'
+    });
 
-      const response = await this.drive.files.create({
-        requestBody,
-        fields: 'id'
-      });
-
-      return response.data.id!;
-    } catch (error) {
-      throw new Error(`Folder creation failed: ${(error as Error).message}`);
-    }
+    return response.data.id!;
   }
 
   /**
@@ -382,30 +328,9 @@ export class GoogleApis {
    * AIDEV-NOTE: mime-type-detection; simple MIME type detection
    */
   private getMimeType(filePath: string): string {
-    const ext = path.extname(filePath).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg', 
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.mp4': 'video/mp4',
-      '.mov': 'video/quicktime',
-      '.avi': 'video/avi',
-      '.pdf': 'application/pdf',
-      '.doc': 'application/msword',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.txt': 'text/plain'
-    };
-    
-    return mimeTypes[ext] || 'application/octet-stream';
+    const mimeTypes = require('mime-types');
+    return mimeTypes.lookup(filePath) || 'application/octet-stream';
   }
-}
-
-// AIDEV-NOTE: factory-function; simple factory for GoogleApis initialization
-export async function createGoogleApis(config: GoogleApisConfig): Promise<GoogleApis> {
-  const apis = new GoogleApis(config);
-  await apis.initialize();
-  return apis;
 }
 
 // Re-export types for convenience
