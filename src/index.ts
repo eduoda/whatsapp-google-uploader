@@ -1,17 +1,16 @@
 /**
  * WhatsApp Google Uploader - Main Entry Point
  * 
- * AIDEV-NOTE: main-entry-point; consolidates all library functionality
+ * AIDEV-NOTE: main-entry-simplified; simplified API with unified GoogleApis class
  */
 
-// Authentication
-export * from './auth/index';
-
-// Google APIs  
-export { DriveManager } from './google-apis/drive/index';
-export { PhotosManager } from './google-apis/photos/index';
+// Unified Google APIs (replaces separate Auth, Drive, Photos)
+export { GoogleApis, createGoogleApis } from './google-apis/index';
 
 // Core Components
 export * from './scanner/index';
 export * from './uploader/index';
 export * from './database/index';
+
+// Types
+export * from './types/index';
