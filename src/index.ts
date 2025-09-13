@@ -4,6 +4,9 @@
  * AIDEV-NOTE: main-entry-simplified; simplified API with unified GoogleApis class
  */
 
+// Configuration
+export { config, loadCredentials, getGoogleApisConfig, envFileExists, createEnvFile } from './config/index';
+
 // Unified Google APIs (replaces separate Auth, Drive, Photos)
 export { GoogleApis, createGoogleApis } from './google-apis/index';
 

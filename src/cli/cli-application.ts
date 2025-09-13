@@ -5,13 +5,29 @@
  */
 
 import { Command } from 'commander';
+import { config, envFileExists, createEnvFile } from '../config';
 
 export class CLIApplication {
   private program: Command;
 
   constructor() {
     this.program = new Command();
+    this.checkEnvironment();
     this.setupProgram();
+  }
+  
+  private checkEnvironment(): void {
+    // Check if .env file exists, create from template if not
+    if (!envFileExists()) {
+      console.log('No .env file found. Creating from template...');
+      createEnvFile();
+      console.log('Please edit .env file with your configuration values.');
+    }
+    
+    // Log current environment (only in development)
+    if (config.nodeEnv === 'development') {
+      console.log('Running in development mode with log level:', config.logLevel);
+    }
   }
 
   private setupProgram(): void {

@@ -16,6 +16,7 @@ import {
   GoogleApisConfig,
   categorizeFile 
 } from '../types';
+import { config, loadCredentials } from '../config';
 
 // AIDEV-NOTE: google-apis-main-class; unified class replacing TokenManager, DriveManager, PhotosManager
 export class GoogleApis {
