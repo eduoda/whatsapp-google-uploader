@@ -7,7 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { GoogleApis } = require('./dist/google-apis/GoogleApis');
+const { GoogleApis } = require('./dist/google-apis');
 const { WhatsAppScanner } = require('./dist/scanner');
 
 // Colors for output
@@ -201,7 +201,7 @@ async function testScanner() {
 
     console.log(`   Scanning: ${whatsappPath}`);
     
-    const chats = await scanner.discoverChats(whatsappPath);
+    const chats = await scanner.findChats(whatsappPath);
     console.log(`${colors.green}✅ Found ${chats.length} chats${colors.reset}`);
     
     if (chats.length > 0) {

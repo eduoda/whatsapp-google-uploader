@@ -43,7 +43,7 @@ test_oauth() {
     
     # Create simple test
     node -e "
-    const { GoogleApis } = require('./dist/google-apis/GoogleApis');
+    const { GoogleApis } = require('./dist/google-apis');
     const googleApis = new GoogleApis('credentials.json');
     googleApis.authenticate()
         .then(() => console.log('✅ OAuth working!'))
@@ -74,7 +74,7 @@ test_scanner() {
         const fs = require('fs');
         if (fs.existsSync(path)) {
             console.log('✅ Found WhatsApp at:', path);
-            scanner.discoverChats(path)
+            scanner.findChats(path)
                 .then(chats => console.log('   Found', chats.length, 'chats'))
                 .catch(err => console.log('❌ Scan failed:', err.message));
             found = true;
@@ -98,7 +98,7 @@ test_drive() {
     echo "Test upload at $(date)" > test-drive.txt
     
     node -e "
-    const { GoogleApis } = require('./dist/google-apis/GoogleApis');
+    const { GoogleApis } = require('./dist/google-apis');
     const googleApis = new GoogleApis('credentials.json');
     
     googleApis.authenticate()
@@ -136,7 +136,7 @@ test_photos() {
     " 2>/dev/null
     
     node -e "
-    const { GoogleApis } = require('./dist/google-apis/GoogleApis');
+    const { GoogleApis } = require('./dist/google-apis');
     const googleApis = new GoogleApis('credentials.json');
     
     googleApis.authenticate()
