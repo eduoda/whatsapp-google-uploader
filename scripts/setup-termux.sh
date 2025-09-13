@@ -23,7 +23,7 @@ pkg install -y nodejs python git build-essential
 
 # Step 3: Install Python distutils (fix for node-gyp)
 echo -e "${YELLOW}🐍 Instalando Python distutils...${NC}"
-pkg install -y python-distutils-extra || true
+#pkg install -y python-distutils-extra || true
 
 # Alternative: Install setuptools which includes distutils
 pip install setuptools || true
