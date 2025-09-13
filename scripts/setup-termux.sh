@@ -70,7 +70,7 @@ fi
 echo -e "${GREEN}✅ Ambiente Termux preparado!${NC}"
 echo ""
 echo "Agora instale as dependências:"
-echo "  npm install --omit=dev --no-optional"
+echo "  npm install --omit=optional --omit=dev"
 echo ""
 echo "Depois teste o scanner:"
 if [ -n "$WHATSAPP_PATH" ]; then
@@ -79,5 +79,7 @@ else
     echo "  npm run test:scanner"
 fi
 echo ""
-echo "💡 Dica: Use --omit=dev para pular dependências de desenvolvimento"
-echo "         Use --no-optional para pular sqlite3 e outras dependências nativas"
+echo "💡 Dicas:"
+echo "  • Use --omit=optional para pular sqlite3 e outras dependências nativas"
+echo "  • Use --omit=dev para pular dependências de desenvolvimento"
+echo "  • Se ainda houver erro, use: npm install --force --omit=optional --omit=dev"

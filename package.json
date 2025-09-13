@@ -75,8 +75,10 @@
     "mime-types": "^2.1.35",
     "ora": "^7.0.1",
     "progress": "^2.0.3",
-    "sqlite3": "^5.1.6",
     "winston": "^3.10.0"
+  },
+  "optionalDependencies": {
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.1",
