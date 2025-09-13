@@ -11,8 +11,9 @@
    - Google Photos Library API  
    - Google Sheets API
 4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
-5. Choose "Desktop app" as application type
-6. Download JSON → Save as `credentials.json` in project root
+5. **IMPORTANT**: Choose **"Desktop app"** as application type (NOT "Web application")
+6. Name it "WhatsApp Uploader" or similar
+7. Download JSON → Save as `credentials.json` in project root
 
 ### Option 2: Manual Creation
 
