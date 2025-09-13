@@ -320,12 +320,27 @@ export class WhatsAppScanner {
       ];
     } else {
       // Linux and Android/Termux
-      searchPaths = [
-        path.join(home, '.config', 'WhatsApp'),
-        path.join(home, 'Documents', 'WhatsApp'),
-        '/storage/emulated/0/WhatsApp',
-        '/sdcard/WhatsApp'
-      ];
+      // AIDEV-NOTE: android-11-paths; prioritize Android 11+ scoped storage paths
+      const isAndroid = process.env.PREFIX?.includes('com.termux') || 
+                        process.env.ANDROID_ROOT || 
+                        process.env.ANDROID_DATA;
+      
+      if (isAndroid) {
+        // Android 11+ uses scoped storage under Android/media
+        searchPaths = [
+          '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp',
+          '/sdcard/Android/media/com.whatsapp/WhatsApp',
+          // Legacy paths for older Android versions (kept for compatibility)
+          '/storage/emulated/0/WhatsApp',
+          '/sdcard/WhatsApp'
+        ];
+      } else {
+        // Desktop Linux
+        searchPaths = [
+          path.join(home, '.config', 'WhatsApp'),
+          path.join(home, 'Documents', 'WhatsApp')
+        ];
+      }
     }
 
     for (const searchPath of searchPaths) {

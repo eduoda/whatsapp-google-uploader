@@ -35,13 +35,31 @@ npm config set node-gyp $(npm prefix -g)/lib/node_modules/npm/node_modules/node-
 
 # Step 5: Create directory for WhatsApp if needed
 echo -e "${YELLOW}📁 Verificando diretório do WhatsApp...${NC}"
-if [ ! -d "/storage/emulated/0/WhatsApp" ] && [ ! -d "/sdcard/WhatsApp" ]; then
+
+# Check Android 11+ paths first
+WHATSAPP_PATH=""
+if [ -d "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp" ]; then
+    WHATSAPP_PATH="/storage/emulated/0/Android/media/com.whatsapp/WhatsApp"
+    echo -e "${GREEN}✅ WhatsApp encontrado (Android 11+): $WHATSAPP_PATH${NC}"
+elif [ -d "/sdcard/Android/media/com.whatsapp/WhatsApp" ]; then
+    WHATSAPP_PATH="/sdcard/Android/media/com.whatsapp/WhatsApp"
+    echo -e "${GREEN}✅ WhatsApp encontrado (Android 11+): $WHATSAPP_PATH${NC}"
+elif [ -d "/storage/emulated/0/WhatsApp" ]; then
+    WHATSAPP_PATH="/storage/emulated/0/WhatsApp"
+    echo -e "${GREEN}✅ WhatsApp encontrado (legado): $WHATSAPP_PATH${NC}"
+elif [ -d "/sdcard/WhatsApp" ]; then
+    WHATSAPP_PATH="/sdcard/WhatsApp"
+    echo -e "${GREEN}✅ WhatsApp encontrado (legado): $WHATSAPP_PATH${NC}"
+else
     echo -e "${YELLOW}⚠️ Diretório do WhatsApp não encontrado${NC}"
     echo "Por favor, certifique-se de ter o WhatsApp instalado"
     echo "e ter dado permissão de armazenamento ao Termux:"
     echo ""
     echo "  termux-setup-storage"
     echo ""
+    echo "Caminhos verificados:"
+    echo "  - /storage/emulated/0/Android/media/com.whatsapp/WhatsApp (Android 11+)"
+    echo "  - /storage/emulated/0/WhatsApp (Android 10 e anteriores)"
 fi
 
 # Step 6: Check storage permissions
@@ -57,3 +75,8 @@ echo ""
 echo "Agora execute:"
 echo "  npm run install:termux"
 echo ""
+if [ -n "$WHATSAPP_PATH" ]; then
+    echo "Para testar o scanner com o caminho detectado:"
+    echo "  npm run test:scanner -- \"$WHATSAPP_PATH\""
+    echo ""
+fi

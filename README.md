@@ -8,7 +8,7 @@
 - **Zero-Copy Architecture** - Direct streaming without temporary files
 - **Auto-Resume System** - Interruption recovery with persistent progress tracking
 - **SHA-256 Deduplication** - Prevent duplicate uploads with persistent database
-- **Cross-Platform** - Works on Windows, macOS, Linux, and Android (Termux)
+- **Cross-Platform** - Works on Windows, macOS, Linux, and Android 11+ (Termux)
 - **Rate Limiting** - Respectful API usage with exponential backoff
 - **Enterprise Reliability** - Comprehensive error handling and retry mechanisms
 
@@ -59,11 +59,15 @@ termux-setup-storage
 3. **Scan available chats**
    ```bash
    whatsapp-uploader scan
+   # Or specify custom WhatsApp path (Android 11+)
+   whatsapp-uploader scan --whatsapp-path="/storage/emulated/0/Android/media/com.whatsapp/WhatsApp"
    ```
 
 4. **Upload media**
    ```bash
    whatsapp-uploader upload --chat-id="ChatName"
+   # Or with custom path
+   whatsapp-uploader upload --chat-id="ChatName" --whatsapp-path="/custom/path/to/WhatsApp"
    ```
 
 ## Commands

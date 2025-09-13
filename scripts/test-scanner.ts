@@ -9,6 +9,11 @@
  * - Escaneamento de arquivos
  * - Extração de metadados
  * - Cálculo de hash SHA-256
+ * 
+ * Uso:
+ *   npm run test:scanner
+ *   npm run test:scanner -- /caminho/para/WhatsApp
+ *   npm run test:scanner -- /storage/emulated/0/Android/media/com.whatsapp/WhatsApp
  */
 
 import { WhatsAppScanner } from '../packages/scanner/src';
@@ -44,9 +49,26 @@ async function testScanner() {
   log('=' .repeat(50), colors.cyan);
 
   try {
+    // Check for command-line argument
+    const customPath = process.argv[2];
+    
     // 1. Detectar caminho do WhatsApp
     log('\n📁 Detectando diretório do WhatsApp...', colors.yellow);
-    const detectedPath = await WhatsAppScanner.detectWhatsAppPath();
+    
+    let detectedPath: string | null;
+    if (customPath) {
+      log(`📍 Usando caminho fornecido: ${customPath}`, colors.blue);
+      // Verify the custom path exists
+      try {
+        await fs.access(customPath);
+        detectedPath = customPath;
+      } catch {
+        log(`❌ Caminho fornecido não existe: ${customPath}`, colors.red);
+        return;
+      }
+    } else {
+      detectedPath = await WhatsAppScanner.detectWhatsAppPath();
+    }
     
     if (detectedPath) {
       log(`✅ Diretório encontrado: ${detectedPath}`, colors.green);
@@ -56,10 +78,15 @@ async function testScanner() {
       
       // Tentar caminhos comuns
       const commonPaths = [
-        path.join(process.env.HOME || '', 'Documents', 'WhatsApp'),
-        path.join(process.env.HOME || '', 'WhatsApp'),
+        // Android 11+ paths (priority)
+        '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp',
+        '/sdcard/Android/media/com.whatsapp/WhatsApp',
+        // Legacy Android paths
         '/storage/emulated/0/WhatsApp',
-        '/sdcard/WhatsApp'
+        '/sdcard/WhatsApp',
+        // Desktop paths
+        path.join(process.env.HOME || '', 'Documents', 'WhatsApp'),
+        path.join(process.env.HOME || '', 'WhatsApp')
       ];
       
       log('\n📂 Procurando em caminhos comuns...', colors.yellow);
@@ -205,6 +232,9 @@ log('  • Descobrir todos os chats', colors.reset);
 log('  • Escanear arquivos de mídia', colors.reset);
 log('  • Extrair metadados e calcular hashes', colors.reset);
 log('  • Mostrar estatísticas detalhadas', colors.reset);
+log('', colors.reset);
+log('💡 Dica: Você pode especificar o caminho do WhatsApp:', colors.cyan);
+log('  npm run test:scanner -- /storage/emulated/0/Android/media/com.whatsapp/WhatsApp', colors.reset);
 
 testScanner().then(() => {
   process.exit(0);
