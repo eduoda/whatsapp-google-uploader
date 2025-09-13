@@ -2,7 +2,7 @@
 
 ## Instalação no Termux
 
-### Opção 1: Instalação Mínima (Recomendado) 🚀
+### Instalação Simples 🚀
 ```bash
 # 1. Clone e entre no diretório
 git clone https://github.com/eduoda/whatsapp-google-uploader.git
@@ -11,20 +11,10 @@ cd whatsapp-google-uploader
 # 2. Execute o setup
 bash scripts/setup-termux.sh
 
-# 3. Instale apenas dependências de produção
+# 3. Instale as dependências
 npm install --production
-```
-
-### Opção 2: Instalação Completa (sem --production)
-```bash
-# Mesmos passos 1 e 2 acima, depois:
-
-# 3. Instale tudo (vai pular o build automaticamente)
+# ou apenas
 npm install
-
-# Você verá a mensagem:
-# ℹ️  TypeScript not found, skipping build.
-# Isso é normal e esperado!
 ```
 
 ## Testar Scanner
@@ -65,22 +55,11 @@ termux-setup-storage
 
 ## Como funciona?
 
-### Script de Build Seguro
-O `postinstall` usa `scripts/safe-build.js` que:
-1. Verifica se TypeScript existe
-2. Se existe → faz build
-3. Se não existe → pula sem erro
-
-```javascript
-// scripts/safe-build.js
-try {
-  execSync('which tsc');
-  execSync('npm run build:packages');
-} catch {
-  console.log('ℹ️ TypeScript not found, skipping build.');
-  process.exit(0); // Sucesso!
-}
-```
+### Sem Build Necessário!
+- ✅ Arquivos `.js` já compilados estão no Git
+- ✅ Não precisa TypeScript
+- ✅ Não precisa compilar nada
+- ✅ Pronto para usar imediatamente
 
 ### Dependências Essenciais
 - ✅ **google-auth-library** - Autenticação OAuth2
