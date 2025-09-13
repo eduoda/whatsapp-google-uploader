@@ -4,7 +4,7 @@ module.exports = {
   testEnvironment: 'node',
   
   // Test file patterns
-  roots: ['<rootDir>/tests', '<rootDir>/packages', '<rootDir>/apps', '<rootDir>/shared'],
+  roots: ['<rootDir>/tests', '<rootDir>/src'],
   testMatch: [
     '**/__tests__/**/*.ts',
     '**/?(*.)+(spec|test).ts'
@@ -12,21 +12,13 @@ module.exports = {
   
   // Module path mapping for TypeScript paths
   moduleNameMapper: {
-    '^@whatsapp-uploader/oauth$': '<rootDir>/packages/oauth/src',
-    '^@whatsapp-uploader/google-drive$': '<rootDir>/packages/google-drive/src',
-    '^@whatsapp-uploader/google-photos$': '<rootDir>/packages/google-photos/src',
-    '^@whatsapp-uploader/scanner$': '<rootDir>/packages/scanner/src',
-    '^@whatsapp-uploader/proxy$': '<rootDir>/packages/proxy/src',
-    '^@shared/(.*)$': '<rootDir>/shared/$1',
     '^@tests/(.*)$': '<rootDir>/tests/$1'
   },
   
   // Coverage configuration
   collectCoverage: false, // Enable with --coverage flag
   collectCoverageFrom: [
-    'packages/**/*.ts',
-    'apps/**/*.ts',
-    'shared/**/*.ts',
+    'src/**/*.ts',
     '!**/*.d.ts',
     '!**/node_modules/**',
     '!**/dist/**',

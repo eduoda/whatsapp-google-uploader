@@ -151,11 +151,36 @@
 - **CANCELLED REASON**: Over-engineering for personal WhatsApp backup use case. Current Google Sheets implementation is perfectly adequate for hundreds to thousands of files. Google Sheets API limits (100 req/sec) are more than sufficient. Following YAGNI principle - simple solution works well for intended use case.
 - **DECISION**: Focus on delivering user-facing CLI features instead of premature optimization
 
+## [✓] gnome - TASK-013 - Package Consolidation and Structure Simplification **COMPLETED**
+- Priority: 1
+- Description: Consolidate 6 packages into single-package structure, remove Lerna/workspaces, create simplified build system
+- Depends on: Current project analysis
+- Phase: Phase 1 - IMMEDIATE CONSOLIDATION
+- Started: 2025-09-13 10:30
+- Worktree: TASK-013-gnome
+- Branch: TASK-013-gnome
+- Conflicts: None (first critical step in simplification)
+- Planning: TASK-013-gnome-planning.md
+- Completed: 2025-09-13 14:30
+- Report: TASK-013-gnome-report.md
+
+## [ ] dwarf - TASK-014 - Code Merging and API Simplification  
+- Priority: 1
+- Description: Merge Google Drive, Photos, and OAuth into single GoogleApis class, simplify token management, consolidate type definitions
+- Depends on: TASK-013 (Package consolidation completed)
+- Phase: Phase 2 - CODE SIMPLIFICATION
+
+## [ ] dwarf - TASK-015 - Complete Proxy Implementation (Finish TASK-006)
+- Priority: 1
+- Description: Complete the 80% missing from TASK-006 - implement actual file uploads, proper error handling, integration with all components
+- Depends on: TASK-014 (API simplification completed)
+- Phase: Phase 3 - COMPLETE PROXY IMPLEMENTATION
+
 ## [ ] api - TASK-007 - CLI Application Development  
 - Priority: 2
 - Description: Implement complete CLI interface with all commands (scan, upload, setup, check, logs)
-- Depends on: TASK-006 (Proxy library completed)
-- Phase: Phase 3 - CLI & UX (moved up from Phase 4 due to TASK-012 cancellation)
+- Depends on: TASK-015 (Proxy library truly completed)
+- Phase: Phase 4 - CLI & UX (moved up from Phase 4 due to TASK-012 cancellation)
 
 ## [❌] architect - TASK-011 - SQLite3 to better-sqlite3 Migration **OBSOLETE**
 - Priority: 1

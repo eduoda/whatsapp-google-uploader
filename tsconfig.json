@@ -9,12 +9,6 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "@whatsapp-uploader/oauth": ["./packages/oauth/src"],
-      "@whatsapp-uploader/google-drive": ["./packages/google-drive/src"],
-      "@whatsapp-uploader/google-photos": ["./packages/google-photos/src"],
-      "@whatsapp-uploader/scanner": ["./packages/scanner/src"],
-      "@whatsapp-uploader/proxy": ["./packages/proxy/src"],
-      "@shared/*": ["./shared/*"],
       "@tests/*": ["./tests/*"]
     },
     "resolveJsonModule": true,
@@ -23,7 +17,7 @@
     
     // Emit
     "outDir": "./dist",
-    "rootDir": ".",
+    "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -57,11 +51,7 @@
     "noEmitOnError": true
   },
   "include": [
-    "packages/**/*",
-    "apps/**/*", 
-    "shared/**/*",
-    "tests/**/*",
-    "scripts/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",
@@ -69,25 +59,5 @@
     "coverage",
     "**/*.js",
     "**/*.d.ts"
-  ],
-  "references": [
-    {
-      "path": "./packages/oauth"
-    },
-    {
-      "path": "./packages/google-drive"
-    },
-    {
-      "path": "./packages/google-photos"
-    },
-    {
-      "path": "./packages/scanner"
-    },
-    {
-      "path": "./packages/proxy"
-    },
-    {
-      "path": "./apps/cli"
-    }
   ]
 }
