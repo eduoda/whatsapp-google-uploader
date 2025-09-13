@@ -28,7 +28,7 @@ npx whatsapp-google-uploader --help
 
 ```bash
 # 1. Install Node.js in Termux
-pkg update && pkg install nodejs
+pkg update && pkg install nodejs sqlite
 
 # 2. Grant storage access (important!)
 termux-setup-storage
@@ -37,14 +37,14 @@ termux-setup-storage
 git clone https://github.com/eduoda/whatsapp-google-uploader.git
 cd whatsapp-google-uploader
 
-# 4. Run Termux setup
-bash scripts/setup-termux.sh
+# 4. Option A: Install without SQLite (recommended for Termux)
+bash scripts/termux-install.sh
 
-# 5. Install dependencies (skip dev and optional)
-npm install --omit=optional --omit=dev
+# 5. Test with standalone scanner (no SQLite needed)
+npm run test:scanner:standalone -- "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp"
 
-# 6. Test the scanner
-npm run test:scanner -- "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp"
+# Alternative Option B: Try regular installation (may fail)
+npm install --omit=dev --force
 ```
 
 ### Setup
