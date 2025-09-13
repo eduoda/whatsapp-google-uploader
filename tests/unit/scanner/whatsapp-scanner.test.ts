@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import * as fc from 'fast-check';
-import { WhatsAppScanner } from '@whatsapp-uploader/scanner';
+import { WhatsAppScanner } from '../../../src/scanner/index';
 import { mockFileSystem, createTestFileMetadata } from '../../__mocks__/filesystem';
 import { 
   fileMetadataArbitrary,

@@ -6,7 +6,7 @@
  */
 
 import { OAuth2Client } from 'google-auth-library';
-import { SheetsDatabase, FileRecord, ProgressRecord } from '@whatsapp-uploader/sheets-database';
+import { SheetsDatabase, FileRecord, ProgressRecord } from '../database/index';
 import { createHash } from 'crypto';
 
 export interface ProxyConfig {
@@ -145,4 +145,4 @@ export async function createProxyManager(config: ProxyConfig): Promise<ProxyMana
 }
 
 // Re-export types from sheets-database
-export { FileRecord, ProgressRecord } from '@whatsapp-uploader/sheets-database';
+export { FileRecord, ProgressRecord } from '../database/index';

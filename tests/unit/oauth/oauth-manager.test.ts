@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import * as fc from 'fast-check';
-import { OAuthManager } from '@whatsapp-uploader/oauth';
+import { OAuthManager } from '../../../src/auth/index';
 import { mockDatabase } from '../../__mocks__/database';
 import { createMockGoogleAuth } from '../../__mocks__/google-apis';
 import { oauthTokenArbitrary, networkErrorArbitrary } from '../../fixtures/property-generators';

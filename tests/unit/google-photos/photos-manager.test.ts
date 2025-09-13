@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import * as fc from 'fast-check';
-import { PhotosManager } from '@whatsapp-uploader/google-photos';
+import { PhotosManager } from '../../../src/google-apis/photos/index';
 import { createMockGooglePhotos } from '../../__mocks__/google-apis';
 import { mockFileSystem } from '../../__mocks__/filesystem';
 import { 

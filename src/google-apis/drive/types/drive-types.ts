@@ -3,7 +3,7 @@
  * AIDEV-NOTE: drive-types-complete; complete Drive type definitions matching test expectations
  */
 
-import { TokenManager } from '@whatsapp-uploader/oauth';
+import { TokenManager } from '../../../auth/token-manager';
 
 export interface DriveConfig {
   auth?: any; // Mock auth client for testing

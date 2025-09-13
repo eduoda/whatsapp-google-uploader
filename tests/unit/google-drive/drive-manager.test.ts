@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import * as fc from 'fast-check';
-import { DriveManager } from '@whatsapp-uploader/google-drive';
+import { DriveManager } from '../../../src/google-apis/drive/index';
 import { createMockGoogleDrive } from '../../__mocks__/google-apis';
 import { mockFileSystem } from '../../__mocks__/filesystem';
 import { 
