@@ -165,7 +165,7 @@
 - Report: TASK-013-gnome-report.md
 - **MERGED**: 2025-09-13 15:45 by architect - Successfully merged to main, all functionality verified
 
-## [✅] dwarf - TASK-014 - Code Merging and API Simplification **COMPLETED**
+## [✅] dwarf - TASK-014 - Code Merging and API Simplification **COMPLETED & MERGED**
 - Priority: 1
 - Description: Merge Google Drive, Photos, and OAuth into single GoogleApis class, simplify token management, consolidate type definitions
 - Depends on: TASK-013 (Package consolidation completed - ✅ READY)
@@ -180,6 +180,7 @@
 - **Completed**: 2025-09-13 19:45
 - **Results**: 36% code reduction, unified GoogleApis class, actual upload functionality implemented
 - **Report**: TASK-014-dwarf-report.md
+- **MERGED**: 2025-09-13 by architect - Successfully merged to main, 36% code reduction verified, actual upload functionality confirmed
 
 ## [ ] dwarf - TASK-015 - Complete Proxy Implementation (Finish TASK-006)
 - Priority: 1
