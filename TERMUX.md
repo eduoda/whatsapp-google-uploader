@@ -10,8 +10,8 @@ cd whatsapp-google-uploader
 # 2. Execute o setup
 bash scripts/setup-termux.sh
 
-# 3. Instale as dependências (apenas 3!)
-npm install
+# 3. Instale as dependências de produção
+npm install --production
 ```
 
 ## Testar Scanner
@@ -27,9 +27,10 @@ npm run test:scanner -- "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp
 ## Por que funciona no Termux?
 
 ✅ **ZERO compilação nativa** - Sem SQLite, sem node-gyp  
-✅ **Apenas 3 dependências** - Google APIs e mime-types  
+✅ **Dependências mínimas** - Apenas o essencial para funcionar  
 ✅ **Persistência na nuvem** - Google Sheets, não arquivos locais  
-✅ **JavaScript puro** - Sem TypeScript, sem build complexo  
+✅ **Scripts inteligentes** - Hooks que não falham se faltam ferramentas  
+✅ **Um só package.json** - Funciona em Linux, macOS, Windows e Termux  
 
 ## Problemas Comuns
 
@@ -49,20 +50,24 @@ termux-setup-storage
 - **K**eep **I**t **S**imple, **S**tupid - Sem complexidade desnecessária
 - **Y**ou **A**ren't **G**onna **N**eed **I**t - Apenas o essencial
 
-## O que foi removido?
+## Como funciona?
 
-❌ SQLite / better-sqlite3  
-❌ 8 dependências desnecessárias (chalk, commander, ora, etc)  
-❌ Todos os devDependencies  
-❌ Build complexo com TypeScript  
-❌ Hooks do git (husky)  
-❌ Lerna workspaces  
+### Scripts Inteligentes
+```bash
+# Hooks que não falham se ferramentas não existem
+"prepare": "which husky > /dev/null 2>&1 && husky install || true"
+"postinstall": "which tsc > /dev/null 2>&1 && npm run build:packages || true"
+```
 
-## O que mantivemos?
+### Dependências Essenciais
+- ✅ **google-auth-library** - Autenticação OAuth2
+- ✅ **googleapis** - APIs do Google Drive/Photos/Sheets
+- ✅ **mime-types** - Identificar tipos de arquivo
 
-✅ Google Auth (essencial)  
-✅ Google APIs (essencial)  
-✅ MIME types (identificar arquivos)  
+### O que removemos?
+- ❌ **SQLite** - Usamos Google Sheets
+- ❌ **Dependências UI** - chalk, ora, commander (desnecessário para MVP)
+- ❌ **Package.termux.json** - Um só package.json para todos!  
 
 ---
 

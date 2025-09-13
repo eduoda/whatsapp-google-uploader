@@ -41,11 +41,11 @@ cd whatsapp-google-uploader
 # 4. Run setup script
 bash scripts/setup-termux.sh
 
-# 5. Install dependencies
-npm install --omit=dev
+# 5. Install production dependencies
+npm install --production
 
 # 6. Test scanner
-npm run test:scanner -- "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp"
+npm run test:scanner
 ```
 
 ### Setup
