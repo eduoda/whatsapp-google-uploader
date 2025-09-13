@@ -50,13 +50,13 @@ The WhatsApp Google Uploader is a production-ready Node.js CLI application desig
   - **Pros:** No disk space overhead, faster processing, better memory efficiency
   - **Cons:** More complex error handling, requires careful stream management
 
-### ADR-003: better-sqlite3 for Progress and Deduplication (Updated)
+### ADR-003: Google Sheets for Progress and Deduplication (Updated)
 - **Status:** Accepted (Updated 2025-09-13)
-- **Context:** Need persistent storage for upload progress and SHA-256 deduplication database. Original sqlite3 had compilation issues on ARM/Termux platforms.
-- **Decision:** Use better-sqlite3 with structured schema for all persistence needs
+- **Context:** Need persistent storage for upload progress and SHA-256 deduplication database. Local SQLite had compilation issues and deployment complexity across platforms.
+- **Decision:** Use Google Sheets API v4 as cloud-based database for all persistence needs
 - **Consequences:**
-  - **Pros:** Zero-configuration, ACID compliance, cross-platform compatibility, ARM/Termux support, synchronous operations
-  - **Cons:** Single-writer limitation (acceptable for CLI usage)
+  - **Pros:** Zero-installation, web-accessible database, cross-platform compatibility, automatic synchronization, real-time collaboration, Google's infrastructure reliability
+  - **Cons:** Requires internet connection, API quota limits (manageable with batching)
 
 ### ADR-004: Proxy Library for API Management
 - **Status:** Accepted
@@ -110,7 +110,7 @@ System_Boundary(uploader, "WhatsApp Google Uploader") {
     Container(photos, "Google Photos Library", "Node.js", "Google Photos API integration")
     Container(proxy, "Proxy Library", "Node.js", "API management, rate limiting, deduplication")
     Container(scanner, "WhatsApp Scanner", "Node.js", "Directory scanning and file indexing")
-    ContainerDb(database, "SQLite Database", "better-sqlite3", "Progress tracking and deduplication")
+    ContainerDb(database, "Google Sheets Database", "Google Sheets API v4", "Cloud-based progress tracking and deduplication")
     ContainerDb(filesystem, "File System", "Local Storage", "WhatsApp media files and logs")
 }
 
@@ -145,7 +145,7 @@ Container(cli, "CLI Application", "Node.js", "Command-line interface")
 Container(drive, "Google Drive Library", "Node.js", "Drive API integration")
 Container(photos, "Google Photos Library", "Node.js", "Photos API integration")
 Container(scanner, "WhatsApp Scanner", "Node.js", "File scanning")
-ContainerDb(database, "SQLite Database", "better-sqlite3", "Persistence")
+ContainerDb(database, "Google Sheets Database", "Google Sheets API v4", "Cloud persistence")
 
 Container_Boundary(proxy, "Proxy Library") {
     Component(uploader, "Upload Orchestrator", "Class", "Coordinates upload workflow")
@@ -341,7 +341,7 @@ interface ProgressState {
 
 ### Persistence Strategy
 
-#### SQLite Database Schema
+#### Google Sheets Database Schema
 ```sql
 -- Progress tracking table
 CREATE TABLE upload_sessions (
@@ -455,16 +455,12 @@ project-root/
 ```
 # Android/Termux
 /storage/emulated/0/Download/
-├── WhatsApp_Progress/             # SQLite database location
-│   └── uploader.db
-└── WhatsApp_Logs/                 # Structured logs
-    └── upload_YYYY-MM-DD.log
+├── WhatsApp_Logs/                 # Structured logs (Google Sheets database is cloud-based)
+│   └── upload_YYYY-MM-DD.log
 
-# Desktop
+# Desktop  
 ~/Downloads/
-├── WhatsApp_Progress/
-│   └── uploader.db
-└── WhatsApp_Logs/
+└── WhatsApp_Logs/                 # Structured logs (Google Sheets database is cloud-based)
     └── upload_YYYY-MM-DD.log
 ```
 
@@ -782,7 +778,7 @@ Since this is a new system, the migration strategy focuses on phased development
 **Deliverables:**
 - OAuth library with token management
 - Basic Google Drive and Photos libraries
-- Database schema and SQLite integration
+- Google Sheets database schema and integration
 - Comprehensive unit tests for all libraries
 
 **Acceptance Criteria:**

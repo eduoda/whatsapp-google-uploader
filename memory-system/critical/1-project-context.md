@@ -21,14 +21,14 @@
 - **Runtime:** Node.js 14+ with ES6+ features
 - **CLI Framework:** Commander.js with inquirer for interactive prompts
 - **APIs:** Google Photos API, Google Drive API, OAuth2
-- **Storage:** SQLite3 for progress/deduplication database
+- **Storage:** Google Sheets for cloud-based progress/deduplication database
 - **Streaming:** Node.js native streams for memory-efficient uploads
 - **Cross-platform:** Path handling for Windows, macOS, Linux, Android/Termux
 
 ## Key Features
 - Smart File Routing (Photos→Google Photos, Docs→Drive) - Status: Planned
 - Auto-Resume System with progress persistence - Status: Planned
-- SHA-256 Deduplication with persistent database - Status: Planned
+- SHA-256 Deduplication with Google Sheets database - Status: Planned
 - Rate Limiting with exponential backoff - Status: Planned
 - Zero-Copy Direct Upload Architecture - Status: Planned
 
@@ -43,8 +43,9 @@
 - **Code style:** [Style guide/linter]
 
 ## Recent Major Changes
-- [Date] - [Change description]
-- [Date] - [Change description]
+- 2025-09-13 - **MAJOR: SQLite→Google Sheets Migration** - Migrated from local SQLite persistence to cloud-based Google Sheets database
+- 2025-09-13 - Created sheets-database package replacing database package
+- 2025-09-13 - Updated proxy package to use Google Sheets for all persistence operations
 
 ## Team/Agent Assignments
 - **Architect:** Overall architecture, task assignment

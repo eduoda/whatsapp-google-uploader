@@ -34,7 +34,7 @@ This document provides a comprehensive overview of all technologies, frameworks,
 - **path**: Cross-platform path manipulation
 
 ### Data Storage
-- **better-sqlite3**: Embedded database for progress tracking and deduplication (synchronous, ARM-compatible)
+- **Google Sheets API v4**: Cloud-based database for progress tracking and deduplication (zero-install, cross-platform)
 
 ## Development Dependencies
 - **jest**: Testing framework for unit, integration, and e2e tests

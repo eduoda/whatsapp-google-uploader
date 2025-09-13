@@ -459,4 +459,90 @@ The project foundation is **100% complete** and ready for Phase 1 development. A
 - Branch: TASK-011-architect ready for merge
 - Database layer ready for TASK-008 implementation
 
+### 2025-09-13 14:00 - Architect - Architecture Review: Google Sheets Migration
+
+**Action**: Complete review and update of all tasks after SQLite→Google Sheets migration
+
+**Changes Made**:
+- **Project Context Updated**: 
+  * Tech stack changed from SQLite to Google Sheets persistence
+  * Added recent major changes documenting the migration
+  * Updated key features descriptions
+
+- **Task Status Updates**:
+  * TASK-006 (Proxy): Marked COMPLETED - Google Sheets integration done
+  * TASK-008 (Database): CANCELLED - SQLite implementation no longer needed
+  * TASK-011 (SQLite Migration): OBSOLETE - Migration path changed completely
+  * TASK-012 (NEW): CREATED - Enhanced Google Sheets database features
+
+- **New Task Created**: TASK-012-database-spec.md
+  * Comprehensive specification for Google Sheets database enhancements
+  * Batch operations, retry logic, performance optimization
+  * Error handling, data validation, maintenance utilities
+  * Advanced query capabilities and real-time sync support
+
+**Key Insights**:
+- **Complete architecture pivot**: From local SQLite to cloud Google Sheets
+- **Significant benefits**: Zero installation, cross-platform compatibility, real-time collaboration
+- **Implementation exists**: sheets-database package operational with proxy integration
+- **Enhancement needed**: TASK-012 addresses performance and reliability improvements
+
+**Impact**:
+- CLI development (TASK-007) can proceed with cloud-based persistence
+- No database agent work needed - Google Sheets handles persistence layer
+- Simplified deployment and testing with cloud-first architecture
+- Enhanced user experience with web-accessible database
+
+**Architecture Quality**: ✅ Clean migration with backward compatibility maintained
+
+---
+
+## 2025-09-13 - Architect - TASK-012 Cancellation
+
+**Action**: Cancelled TASK-012 (Google Sheets Database Enhancement) due to over-engineering assessment
+
+**Rationale**:
+- **YAGNI Principle**: Current Google Sheets implementation perfectly adequate for personal WhatsApp backup use case
+- **Scale Assessment**: Hundreds to thousands of files don't require batch operations and complex caching
+- **API Limits**: Google Sheets 100 req/sec limit is more than sufficient for this use case
+- **Complexity vs Value**: Advanced features would add unnecessary complexity without real benefit
+- **Focus Shift**: Better to prioritize user-facing CLI features (TASK-007) for immediate value
+
+**Changes Made**:
+- Updated `critical/2-tasks.md`: Marked TASK-012 as CANCELLED with detailed rationale
+- Updated TASK-007 dependencies: Removed TASK-012 dependency, moved from Phase 4 to Phase 3
+- Archived specification: Moved TASK-012-database-spec.md to `archive/cancelled-tasks/`
+- Added cancellation context to archived file with impact assessment
+
+**Impact**:
+- **TASK-007 (CLI)**: Now unblocked and prioritized for immediate development
+- **Development Focus**: Shifted from premature optimization to essential user features  
+- **Project Timeline**: Accelerated by removing unnecessary complexity
+- **Architecture**: Simplified - current sheets-database package is adequate
+
+**Decision Quality**: ✅ Architectural decision based on use case analysis and YAGNI principle
+
+---
+
+## 2025-09-13 15:45 - CRITICAL: TASK-006 Incorrectly Marked Complete (architect)
+
+**Issue Identified**: TASK-006 (Proxy Library) was incorrectly marked as COMPLETED when only ~20% of functionality was implemented.
+
+**Analysis Findings**:
+- ✅ **Completed**: Basic structure, Google Sheets integration, progress tracking framework  
+- ❌ **Missing**: Real upload integration (line 74 TODO), content-based hashing (line 135 broken), rate limiting enforcement, retry logic, smart routing, concurrency, resume capability
+
+**Actions Taken**:
+- **TASK-006 Status**: Changed from [✓] COMPLETED to [ ] REOPENED with detailed missing implementation list
+- **Priority**: Maintained as Priority 1 (critical core component)
+- **Acceptance Criteria**: Added comprehensive checklist for true completion
+- **Description**: Updated to reflect actual requirements vs placeholder implementation
+
+**Impact**: 
+- **CLI Development (TASK-007)**: Properly blocked until TASK-006 truly completed
+- **Project Timeline**: Honest assessment prevents downstream failures
+- **Quality Standards**: Ensures functional upload system vs skeleton code
+
+**Root Cause**: Premature completion marking based on basic structure rather than functional requirements
+
 ---

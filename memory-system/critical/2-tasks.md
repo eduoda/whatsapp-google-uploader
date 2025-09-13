@@ -115,21 +115,51 @@
 - Completed: 2025-09-12 14:45
 - Report: TASK-005-dwarf-report.md
 
-## [ ] dwarf - TASK-006 - Proxy Library Development (Core Orchestrator)
+## [ ] dwarf - TASK-006 - Proxy Library Development (Core Orchestrator) **REOPENED - 20% COMPLETE**
 - Priority: 1
-- Description: Implement main orchestrator library with rate limiting, deduplication, progress tracking, and recovery
+- Description: Complete implementation of main orchestrator library with actual upload integration, content-based file hashing, rate limiting enforcement, retry logic, smart file routing (photos→Google Photos, docs→Drive), concurrent upload management, and resume capability
 - Depends on: TASK-002, TASK-003, TASK-004, TASK-005
 - Phase: Phase 2 - Core Features
+- **Status**: REOPENED - Only basic structure and Google Sheets integration completed
+- **Completion**: ~20% (structure + sheets integration only)
+- Branch: TASK-006-dwarf
+
+**MISSING IMPLEMENTATION** (Critical - 80% remaining):
+1. **Real upload integration**: Connect to Google Drive/Photos libraries (currently TODO on line 74)
+2. **Actual file hashing**: Hash file content, not just filepath (broken implementation on line 135)
+3. **Rate limiting enforcement**: Use the rate limit config that exists but isn't applied
+4. **Retry logic & error handling**: Exponential backoff, permanent vs transient error classification
+5. **Smart file routing**: Route photos/videos → Google Photos, documents/audio → Google Drive
+6. **Concurrent upload management**: Replace sequential loop with concurrent processing
+7. **Resume capability**: Handle partial uploads and recovery from failures
+
+**ACCEPTANCE CRITERIA**:
+- [ ] Actual file uploads working (not placeholder TODO)
+- [ ] Content-based SHA-256 hashing (read file bytes, not path)
+- [ ] Rate limiting actively enforced (respect maxConcurrent, requestsPerSecond)
+- [ ] Exponential backoff retry logic for transient failures
+- [ ] Smart routing: photos/videos → Google Photos, documents → Google Drive
+- [ ] Concurrent uploads with configurable limits
+- [ ] Resume failed uploads on restart
+- [ ] All integration tests passing with real upload flows
+
+## [❌] database - TASK-012 - Google Sheets Database Enhancement **CANCELLED**
+- Priority: 2  
+- Description: ~~Enhance the sheets-database package with advanced features like batch operations, error handling, retry logic, and performance optimization~~
+- Depends on: TASK-006 (Proxy library completed with basic sheets integration)
+- Phase: Phase 2 - Core Features
+- **CANCELLED REASON**: Over-engineering for personal WhatsApp backup use case. Current Google Sheets implementation is perfectly adequate for hundreds to thousands of files. Google Sheets API limits (100 req/sec) are more than sufficient. Following YAGNI principle - simple solution works well for intended use case.
+- **DECISION**: Focus on delivering user-facing CLI features instead of premature optimization
 
 ## [ ] api - TASK-007 - CLI Application Development  
 - Priority: 2
 - Description: Implement complete CLI interface with all commands (scan, upload, setup, check, logs)
-- Depends on: TASK-006 (Proxy library)
-- Phase: Phase 4 - CLI & UX
+- Depends on: TASK-006 (Proxy library completed)
+- Phase: Phase 3 - CLI & UX (moved up from Phase 4 due to TASK-012 cancellation)
 
-## [✓] architect - TASK-011 - SQLite3 to better-sqlite3 Migration **COMPLETED**
+## [❌] architect - TASK-011 - SQLite3 to better-sqlite3 Migration **OBSOLETE**
 - Priority: 1
-- Description: Migrate from sqlite3 to better-sqlite3 for better Termux/ARM compatibility and performance
+- Description: ~~Migrate from sqlite3 to better-sqlite3 for better Termux/ARM compatibility and performance~~
 - Depends on: Current project state analysis
 - Phase: Architecture Update
 - Started: 2025-09-13 14:30
@@ -138,12 +168,15 @@
 - Planning: TASK-011-architect-planning.md
 - Completed: 2025-09-13 15:30
 - Report: TASK-011-architect-report.md
+- **OBSOLETE REASON**: Replaced by Google Sheets persistence architecture - no local SQLite needed
 
-## [ ] database - TASK-008 - Database Schema and Migrations (Updated)
+## [❌] database - TASK-008 - Database Schema and Migrations **CANCELLED**
 - Priority: 2
-- Description: Design and implement better-sqlite3 schema for progress tracking, deduplication, and error handling
+- Description: ~~Design and implement better-sqlite3 schema for progress tracking, deduplication, and error handling~~
 - Depends on: TASK-011 (migration completed), TASK-001 (architecture approval), TASK-010 (project structure)  
 - Phase: Phase 1 - Foundation Libraries
+- **CANCELLED REASON**: Replaced by Google Sheets persistence architecture (sheets-database package)
+- **REPLACEMENT**: TASK-012 - Google Sheets Database Enhancement
 
 ## [✓] seer - TASK-009 - Comprehensive Test Suite **COMPLETED**
 - Priority: 3
