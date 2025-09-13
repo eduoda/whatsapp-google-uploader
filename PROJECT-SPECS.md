@@ -141,12 +141,15 @@ Create comprehensive testing system:
 
 #### **Commands:**
 ```bash
-# Complete tests
-npm run test                          # All tests
-npm run test -- --suite=auth          # Authentication only
-npm run test -- --suite=upload        # Upload only
-npm run test -- --suite=api           # APIs only
-npm run test -- --verbose             # Detailed output
+# Component tests (simplified structure)
+node test-all.js                      # All component tests with summary
+./test-components.sh                  # Test each component separately
+node scripts/test-scanner-simple.js   # Scanner only (Termux-friendly)
+
+# Individual component tests
+node -e "const {GoogleApis} = require('./dist/google-apis/GoogleApis'); 
+         new GoogleApis('credentials.json').authenticate()
+         .then(() => console.log('✅ Auth OK!'))"
 ```
 
 
