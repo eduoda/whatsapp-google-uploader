@@ -153,6 +153,24 @@ node -e "const {GoogleApis} = require('./dist/google-apis/GoogleApis');
 ```
 
 
+## 🏗️ Architecture
+
+### **Simplified Single-Package Design**
+After KISS/YAGNI/DRY review, simplified from 6 packages to single structure:
+
+- **src/google-apis/** - Unified GoogleApis class (Auth + Drive + Photos)
+- **src/scanner/** - WhatsApp directory scanner
+- **src/database/** - Google Sheets cloud database
+- **src/uploader/** - Core upload orchestration
+- **src/cli/** - Command-line interface
+
+### **Key Simplifications:**
+- Single `GoogleApis` class replaces 3 separate managers
+- File-based token storage (no AES encryption for personal use)
+- Google Sheets for all persistence (no local SQLite)
+- Direct imports instead of package dependencies
+- Single build process (no Lerna/workspaces)
+
 ## 🛠️ Technical Specifications
 
 ### **Environment Support:**
@@ -160,16 +178,12 @@ node -e "const {GoogleApis} = require('./dist/google-apis/GoogleApis');
 - **Desktop**: Windows, macOS, Linux support
 - **Node.js**: v14+ compatibility
 
-### **File Structure Created:**
-```
-/storage/emulated/0/Download/ (Termux) or ~/Downloads/ (Desktop)
-├── WhatsApp_Progress/               # Progress and recovery data
-│   ├── uploaded_files.json         # Deduplication database
-│   └── ChatName_ChatId_progress.json      # Per-chat progress
-└── WhatsApp_Logs/                   # Detailed logs
-    ├── upload_2024-01-15T10-30-00.log
-    └── session_analysis.json
-```
+### **Cloud Storage (Google Sheets):**
+All persistence is now in Google Sheets (no local files):
+- **WhatsApp-Uploader-Database** spreadsheet (auto-created)
+  - **uploaded_files** sheet - Deduplication with SHA-256 hashes
+  - **upload_progress** sheet - Per-chat progress tracking
+- **token.json** - OAuth token (local file, simple JSON)
 
 ### **Google Integration:**
 - **Google Photos API**: Album creation, batch media upload
