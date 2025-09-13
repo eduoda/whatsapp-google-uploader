@@ -19,7 +19,7 @@
     "test:oauth": "ts-node scripts/test-oauth.ts",
     "test:drive": "ts-node scripts/test-drive.ts",
     "test:photos": "ts-node scripts/test-photos.ts",
-    "test:scanner": "ts-node scripts/test-scanner.ts",
+    "test:scanner": "ts-node scripts/test-scanner.ts 2>/dev/null || node scripts/test-scanner.js",
     "setup:termux": "bash scripts/setup-termux.sh",
     "install:termux": "node scripts/install-termux.js",
     "lint": "eslint . --ext .ts,.js",

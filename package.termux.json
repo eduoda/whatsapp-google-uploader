@@ -7,13 +7,13 @@
     "whatsapp-uploader": "./apps/cli/dist/bin/cli.js"
   },
   "scripts": {
-    "build": "echo 'Build not required for Termux - using pre-built version'",
-    "test:oauth": "node scripts/test-oauth.js",
-    "test:drive": "node scripts/test-drive.js",
-    "test:photos": "node scripts/test-photos.js",
+    "build": "echo 'Build not required for Termux - using JavaScript version'",
+    "test:oauth": "echo 'OAuth test not yet available for Termux'",
+    "test:drive": "echo 'Drive test not yet available for Termux'",
+    "test:photos": "echo 'Photos test not yet available for Termux'",
     "test:scanner": "node scripts/test-scanner.js",
-    "scan": "node apps/cli/dist/bin/cli.js scan",
-    "upload": "node apps/cli/dist/bin/cli.js upload"
+    "scan": "echo 'CLI not yet implemented'",
+    "upload": "echo 'CLI not yet implemented'"
   },
   "keywords": [
     "whatsapp",

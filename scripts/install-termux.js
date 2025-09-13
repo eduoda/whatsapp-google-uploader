@@ -52,7 +52,44 @@ try {
     
     execSync('npm install --no-optional --no-save', { stdio: 'inherit' });
     
-    // Step 5: Create minimal SQLite mock if needed
+    // Step 5: Copy scanner source files for direct use
+    const scannerSrcPath = path.join(__dirname, '..', 'packages', 'scanner', 'src');
+    const scannerDistPath = path.join(__dirname, '..', 'packages', 'scanner', 'dist');
+    
+    // Create dist directory if it doesn't exist
+    if (!fs.existsSync(scannerDistPath)) {
+        fs.mkdirSync(scannerDistPath, { recursive: true });
+    }
+    
+    // Copy index.ts as index.js (simple copy for now)
+    const scannerSource = path.join(scannerSrcPath, 'index.ts');
+    const scannerDest = path.join(scannerDistPath, 'index.js');
+    
+    if (fs.existsSync(scannerSource)) {
+        // Read the TypeScript file and do a basic conversion
+        let content = fs.readFileSync(scannerSource, 'utf8');
+        
+        // Remove TypeScript-specific syntax (basic conversion)
+        content = content.replace(/: string/g, '');
+        content = content.replace(/: number/g, '');
+        content = content.replace(/: boolean/g, '');
+        content = content.replace(/: any/g, '');
+        content = content.replace(/: void/g, '');
+        content = content.replace(/: Promise<[^>]+>/g, '');
+        content = content.replace(/interface \w+ \{[^}]+\}/g, '');
+        content = content.replace(/export interface/g, '// interface');
+        content = content.replace(/implements \w+/g, '');
+        content = content.replace(/private /g, '');
+        content = content.replace(/public /g, '');
+        content = content.replace(/readonly /g, '');
+        content = content.replace(/\?:/g, ':');
+        
+        // Write the converted file
+        fs.writeFileSync(scannerDest, content);
+        console.log('✅ Scanner copiado para uso direto');
+    }
+    
+    // Step 6: Create minimal SQLite mock if needed
     const sqliteMockPath = path.join(__dirname, '..', 'packages', 'database', 'src', 'sqlite-mock.js');
     const sqliteMockContent = `
 // SQLite mock for Termux environment

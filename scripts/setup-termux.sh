@@ -42,10 +42,10 @@ if ! grep -q "export PYTHON=python3" ~/.bashrc 2>/dev/null; then
     echo -e "${GREEN}✅ Variáveis de ambiente adicionadas ao .bashrc${NC}"
 fi
 
-# Create .npmrc with additional configs if needed
-if [ ! -f ~/.npmrc ] || ! grep -q "python" ~/.npmrc 2>/dev/null; then
-    echo "# Python config for node-gyp" >> ~/.npmrc
-    echo "python=python3" >> ~/.npmrc
+# Remove deprecated python config from .npmrc if it exists
+if [ -f ~/.npmrc ] && grep -q "python" ~/.npmrc 2>/dev/null; then
+    sed -i '/python=/d' ~/.npmrc
+    echo -e "${YELLOW}Removida configuração deprecada do .npmrc${NC}"
 fi
 
 echo -e "${GREEN}✅ Configuração do Python para node-gyp definida${NC}"
