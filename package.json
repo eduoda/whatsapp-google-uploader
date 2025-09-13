@@ -20,9 +20,7 @@
     "test:drive": "ts-node scripts/test-drive.ts",
     "test:photos": "ts-node scripts/test-photos.ts",
     "test:scanner": "ts-node scripts/test-scanner.ts 2>/dev/null || node scripts/test-scanner.js",
-    "test:scanner:standalone": "node scripts/test-scanner-standalone.js",
     "setup:termux": "bash scripts/setup-termux.sh",
-    "install:termux": "bash scripts/termux-install.sh",
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "format": "prettier --write .",
@@ -67,7 +65,6 @@
     "shared/*"
   ],
   "dependencies": {
-    "better-sqlite3": "^9.0.0",
     "chalk": "^5.3.0",
     "commander": "^11.0.0",
     "fs-extra": "^11.1.1",
@@ -81,7 +78,6 @@
     "winston": "^3.10.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.8",
     "@types/fs-extra": "^11.0.1",
     "@types/inquirer": "^9.0.3",
     "@types/jest": "^29.5.4",

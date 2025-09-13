@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-# Simplified setup script for Termux environment
-# This script prepares the Termux environment for WhatsApp Google Uploader
+# Setup script for Termux environment
+# Prepares Termux for WhatsApp Google Uploader (Google Sheets based)
 
 echo "🚀 WhatsApp Google Uploader - Termux Setup"
 echo "==========================================="
@@ -17,18 +17,9 @@ NC='\033[0m' # No Color
 echo -e "${YELLOW}📦 Atualizando pacotes do Termux...${NC}"
 pkg update -y
 
-# Step 2: Install only Node.js (required)
+# Step 2: Install Node.js
 echo -e "${YELLOW}📦 Instalando Node.js...${NC}"
 pkg install -y nodejs
-
-# Step 3: Clean up any old npm config
-echo -e "${YELLOW}🧹 Limpando configurações antigas...${NC}"
-
-# Remove deprecated python config from .npmrc if it exists
-if [ -f ~/.npmrc ] && grep -q "python" ~/.npmrc 2>/dev/null; then
-    sed -i '/python=/d' ~/.npmrc
-    echo -e "${GREEN}✅ Removida configuração deprecada do .npmrc${NC}"
-fi
 
 # Step 4: Check WhatsApp directory
 echo -e "${YELLOW}📁 Verificando diretório do WhatsApp...${NC}"
@@ -79,7 +70,7 @@ else
     echo "  npm run test:scanner"
 fi
 echo ""
-echo "💡 Dicas:"
+echo "💡 Sistema configurado para usar Google Sheets como banco de dados"
+echo "  • Não requer SQLite ou outros bancos locais"
+echo "  • Toda persistência é feita na nuvem"
 echo "  • Use --omit=dev para pular dependências de desenvolvimento"
-echo "  • better-sqlite3 tem melhor suporte ao ARM do que sqlite3"
-echo "  • Se ainda houver erro, use: npm install --force --omit=dev"

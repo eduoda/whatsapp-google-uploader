@@ -1,0 +1,26 @@
+{
+  "name": "@whatsapp-uploader/sheets-database",
+  "version": "1.0.0",
+  "description": "Google Sheets database for WhatsApp Google Uploader",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "googleapis": "^126.0.1"
+  },
+  "peerDependencies": {
+    "@whatsapp-uploader/oauth": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.0",
+    "typescript": "^5.1.6",
+    "rimraf": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

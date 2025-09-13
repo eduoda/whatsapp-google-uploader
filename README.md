@@ -6,9 +6,10 @@
 
 - **Smart File Routing** - Photos/videos → Google Photos, Documents/audio → Google Drive
 - **Zero-Copy Architecture** - Direct streaming without temporary files
-- **Auto-Resume System** - Interruption recovery with persistent progress tracking
-- **SHA-256 Deduplication** - Prevent duplicate uploads with persistent database
+- **Auto-Resume System** - Interruption recovery with cloud-based progress tracking
+- **SHA-256 Deduplication** - Prevent duplicate uploads with Google Sheets database
 - **Cross-Platform** - Works on Windows, macOS, Linux, and Android 11+ (Termux)
+- **Cloud Storage** - Uses Google Sheets for all persistence (no local database needed)
 - **Rate Limiting** - Respectful API usage with exponential backoff
 - **Enterprise Reliability** - Comprehensive error handling and retry mechanisms
 
@@ -28,7 +29,7 @@ npx whatsapp-google-uploader --help
 
 ```bash
 # 1. Install Node.js in Termux
-pkg update && pkg install nodejs sqlite
+pkg update && pkg install nodejs
 
 # 2. Grant storage access (important!)
 termux-setup-storage
@@ -37,14 +38,14 @@ termux-setup-storage
 git clone https://github.com/eduoda/whatsapp-google-uploader.git
 cd whatsapp-google-uploader
 
-# 4. Option A: Install without SQLite (recommended for Termux)
-bash scripts/termux-install.sh
+# 4. Run setup script
+bash scripts/setup-termux.sh
 
-# 5. Test with standalone scanner (no SQLite needed)
-npm run test:scanner:standalone -- "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp"
+# 5. Install dependencies
+npm install --omit=dev
 
-# Alternative Option B: Try regular installation (may fail)
-npm install --omit=dev --force
+# 6. Test scanner
+npm run test:scanner -- "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp"
 ```
 
 ### Setup
@@ -91,6 +92,7 @@ This application follows a modular library architecture:
 - **@whatsapp-uploader/google-drive** - Google Drive API integration
 - **@whatsapp-uploader/google-photos** - Google Photos API integration  
 - **@whatsapp-uploader/scanner** - WhatsApp directory scanning
+- **@whatsapp-uploader/sheets-database** - Google Sheets cloud database
 - **@whatsapp-uploader/proxy** - Core orchestration and rate limiting
 
 ## Development
@@ -99,7 +101,7 @@ This application follows a modular library architecture:
 
 - Node.js 14+ (18+ recommended)
 - npm 6+
-- SQLite3
+- Google Account with API access
 
 ### Build from Source
 
@@ -178,13 +180,14 @@ Configuration is managed through environment variables and config files:
 
 - Copy `.env.template` to `.env` and configure
 - Platform-specific configs in `config/platforms/`
-- Database schema in `config/database/schema.sql`
+- Google Sheets database automatically created on first run
 
 ## Security
 
 - **Minimal OAuth Scopes** - Only requests necessary permissions
 - **Encrypted Token Storage** - Secure credential storage
-- **No Data Collection** - All processing happens locally
+- **Cloud-Based Database** - All persistence in Google Sheets (no local database files)
+- **No Local Data Storage** - No sensitive data stored on device
 - **Secure File Access** - Validates all file paths and permissions
 
 ## Performance
