@@ -143,7 +143,7 @@ module.exports = {
     console.error(error.message);
     console.log('\n💡 Tente executar:');
     console.log('   1. pkg install nodejs python git build-essential');
-    console.log('   2. npm config set python python3');
+    console.log('   2. export PYTHON=python3');
     console.log('   3. Execute este script novamente\n');
     process.exit(1);
 }

@@ -28,10 +28,27 @@ echo -e "${YELLOW}🐍 Instalando Python distutils...${NC}"
 # Alternative: Install setuptools which includes distutils
 pip install setuptools || true
 
-# Step 4: Set npm config for Termux
-echo -e "${YELLOW}⚙️ Configurando npm para Termux...${NC}"
-npm config set python python3
-npm config set node-gyp $(npm prefix -g)/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js
+# Step 4: Set environment for node-gyp (if needed)
+echo -e "${YELLOW}⚙️ Configurando ambiente para Termux...${NC}"
+
+# Set Python environment variable for node-gyp
+export PYTHON=python3
+export PYTHON3=python3
+
+# Add to .bashrc for permanent configuration
+if ! grep -q "export PYTHON=python3" ~/.bashrc 2>/dev/null; then
+    echo "export PYTHON=python3" >> ~/.bashrc
+    echo "export PYTHON3=python3" >> ~/.bashrc
+    echo -e "${GREEN}✅ Variáveis de ambiente adicionadas ao .bashrc${NC}"
+fi
+
+# Create .npmrc with additional configs if needed
+if [ ! -f ~/.npmrc ] || ! grep -q "python" ~/.npmrc 2>/dev/null; then
+    echo "# Python config for node-gyp" >> ~/.npmrc
+    echo "python=python3" >> ~/.npmrc
+fi
+
+echo -e "${GREEN}✅ Configuração do Python para node-gyp definida${NC}"
 
 # Step 5: Create directory for WhatsApp if needed
 echo -e "${YELLOW}📁 Verificando diretório do WhatsApp...${NC}"
