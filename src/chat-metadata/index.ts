@@ -141,11 +141,29 @@ export class ChatMetadataExtractor {
       chatType: rawChat.chatType === 1 ? 'group' : 'individual',
       msgstoreDate,
 
+      // AIDEV-NOTE: Statistics - will be populated from msgstore.db queries
+      totalMessages: 0,
+      firstMessageDate: undefined,
+      lastMessageDate: undefined,
+      createdDate: undefined,
+
+      // AIDEV-NOTE: File control - will be populated from media scan
+      totalMediaCount: 0,
+      totalMediaSizeMB: 0,
+      photosCount: 0,
+      videosCount: 0,
+      audiosCount: 0,
+      documentsCount: 0,
+      lastVerificationDate: new Date(),
+
       // AIDEV-NOTE: Upload tracking fields - initially empty/zero
       lastSyncDate: undefined,
       lastUploadedFile: undefined,
       syncedFilesCount: this.config.defaults.syncedFilesCount,
       failedUploadsCount: this.config.defaults.failedUploadsCount,
+      uploadStatus: 'Pendente',
+      uploadProgress: 0,
+      uploadRetryCount: 0,
 
       // AIDEV-NOTE: Google service integration - initially empty
       photosAlbumName: undefined,
@@ -155,7 +173,12 @@ export class ChatMetadataExtractor {
 
       // AIDEV-NOTE: User configuration with sensible defaults
       syncEnabled: this.config.defaults.syncEnabled,
-      maxMediaAgeDays: this.config.defaults.maxMediaAgeDays
+      maxMediaAgeDays: this.config.defaults.maxMediaAgeDays,
+
+      // AIDEV-NOTE: Organization - defaults
+      category: undefined,
+      isArchived: false,
+      notes: undefined
     };
   }
 
@@ -211,6 +234,9 @@ export class ChatMetadataExtractor {
     }
   }
 }
+
+// AIDEV-NOTE: Export ChatFileAnalyzer for TASK-024
+export { ChatFileAnalyzer } from './chat-file-analyzer.js';
 
 // AIDEV-NOTE: Export types for use in other modules
 export * from './types.js';

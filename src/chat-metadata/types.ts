@@ -26,6 +26,41 @@ export interface ChatMetadata {
   /** Date when msgstore.db was created/last modified */
   msgstoreDate: Date;
 
+  // AIDEV-NOTE: Statistics metrics (extracted from msgstore.db)
+  /** Total message count in the chat */
+  totalMessages: number;
+
+  /** Date/time of first message in chat */
+  firstMessageDate?: Date;
+
+  /** Date/time of last message in chat */
+  lastMessageDate?: Date;
+
+  /** Chat creation date */
+  createdDate?: Date;
+
+  // AIDEV-NOTE: File control metrics (calculated from media scan)
+  /** Total media files count */
+  totalMediaCount: number;
+
+  /** Total size of all media files in MB */
+  totalMediaSizeMB: number;
+
+  /** Count of photo files */
+  photosCount: number;
+
+  /** Count of video files */
+  videosCount: number;
+
+  /** Count of audio files */
+  audiosCount: number;
+
+  /** Count of document files */
+  documentsCount: number;
+
+  /** Last scan/verification timestamp */
+  lastVerificationDate?: Date;
+
   // AIDEV-NOTE: Upload tracking fields (initially empty, populated during uploads)
   /** Last time this chat was synchronized with Google */
   lastSyncDate?: Date;
@@ -38,6 +73,15 @@ export interface ChatMetadata {
 
   /** Count of files that failed to upload for this chat */
   failedUploadsCount: number;
+
+  /** Upload status: Pendente/Em Progresso/Completo/Erro */
+  uploadStatus: 'Pendente' | 'Em Progresso' | 'Completo' | 'Erro';
+
+  /** Upload progress percentage (0-100) */
+  uploadProgress: number;
+
+  /** Number of upload retry attempts */
+  uploadRetryCount: number;
 
   // AIDEV-NOTE: Google service integration fields (initially empty)
   /** Name of Google Photos album created for this chat */
@@ -58,6 +102,16 @@ export interface ChatMetadata {
 
   /** Maximum age in days for media files to keep on phone (for cleanup) */
   maxMediaAgeDays: number;
+
+  // AIDEV-NOTE: Organization and tags (user-configurable)
+  /** Category: Família/Trabalho/Amigos/Clientes/Outros */
+  category?: 'Família' | 'Trabalho' | 'Amigos' | 'Clientes' | 'Outros';
+
+  /** Whether chat is archived in WhatsApp */
+  isArchived: boolean;
+
+  /** Free-form notes field for user observations */
+  notes?: string;
 }
 
 /**
@@ -103,20 +157,50 @@ export interface ChatExtractorConfig {
  * Maps ChatMetadata fields to Portuguese column headers
  */
 export const PORTUGUESE_COLUMN_LABELS = {
-  chatName: 'nome do chat',
-  chatJid: 'jid do chat',
-  chatType: 'tipo do chat',
-  msgstoreDate: 'data do msgstore.db',
-  lastSyncDate: 'data da ultima sincronizacao',
-  lastUploadedFile: 'ultimo arquivo enviado',
-  syncedFilesCount: 'quantidade de arquivos sincronizados ate o momento',
-  failedUploadsCount: 'quantidade de arquivos que falharam no upload',
-  photosAlbumName: 'nome do album do google photos',
-  photosAlbumLink: 'link para album do google photos',
-  driveDirectoryName: 'nome do diretorio do google drive',
-  driveDirectoryLink: 'link para diretorio do google drive',
-  syncEnabled: 'flag para saber se o grupo chat deve ou nao ser sincronizado',
-  maxMediaAgeDays: 'idade maxima dos arquivos de midia para se manter no celular'
+  // Identificação
+  chatName: 'Nome do Chat',
+  chatJid: 'ID WhatsApp (JID)',
+  chatType: 'Tipo (Individual/Grupo)',
+  msgstoreDate: 'Data do Backup',
+
+  // Estatísticas
+  totalMessages: 'Total de Mensagens',
+  firstMessageDate: 'Primeira Mensagem',
+  lastMessageDate: 'Última Mensagem',
+  createdDate: 'Data de Criação',
+
+  // Controle de Arquivos
+  totalMediaCount: 'Total de Mídias',
+  totalMediaSizeMB: 'Tamanho Total (MB)',
+  photosCount: 'Qtd Fotos',
+  videosCount: 'Qtd Vídeos',
+  audiosCount: 'Qtd Áudios',
+  documentsCount: 'Qtd Documentos',
+  lastVerificationDate: 'Última Verificação',
+
+  // Status de Sincronização
+  lastSyncDate: 'Última Sincronização',
+  lastUploadedFile: 'Último Arquivo Enviado',
+  syncedFilesCount: 'Arquivos Sincronizados',
+  failedUploadsCount: 'Falhas de Upload',
+  uploadStatus: 'Status de Upload',
+  uploadProgress: 'Progresso (%)',
+  uploadRetryCount: 'Tentativas de Upload',
+
+  // Google Services
+  photosAlbumName: 'Álbum Google Photos',
+  photosAlbumLink: 'Link do Álbum',
+  driveDirectoryName: 'Pasta Google Drive',
+  driveDirectoryLink: 'Link da Pasta',
+
+  // Configurações
+  syncEnabled: 'Sincronização Ativa',
+  maxMediaAgeDays: 'Retenção (dias)',
+
+  // Organização
+  category: 'Categoria',
+  isArchived: 'Arquivado',
+  notes: 'Observações'
 } as const;
 
 /**
@@ -128,3 +212,65 @@ export const DEFAULT_CHAT_CONFIG: ChatExtractorConfig['defaults'] = {
   syncedFilesCount: 0,
   failedUploadsCount: 0
 };
+
+// AIDEV-NOTE: ChatFileInfo interface for TASK-024 per-chat file analysis
+/**
+ * Information about a specific media file from a chat
+ * Used for per-chat file analysis and Google Sheets upload tracking
+ */
+export interface ChatFileInfo {
+  // Database info from messages table
+  /** Message ID from WhatsApp database */
+  messageId: string;
+
+  /** Chat JID this file belongs to */
+  chatJid: string;
+
+  /** JID of the sender (optional - could be outgoing message) */
+  senderJid?: string;
+
+  /** Timestamp when message was sent */
+  messageTimestamp: Date;
+
+  // File info from messages.data JSON blob
+  /** File name extracted from WhatsApp message data */
+  fileName: string;
+
+  /** Media type classification */
+  mediaType: 'photo' | 'video' | 'document' | 'audio';
+
+  /** File size from database (optional) */
+  size?: number;
+
+  /** MIME type from database (optional) */
+  mimeType?: string;
+
+  /** Message caption/text (optional) */
+  caption?: string;
+
+  // Filesystem matching results
+  /** Full path to actual file if found on filesystem */
+  filePath?: string;
+
+  /** Whether file exists on filesystem */
+  fileExists: boolean;
+
+  /** Actual file size from filesystem (if file exists) */
+  actualSize?: number;
+
+  // Upload tracking columns (for Google Sheets)
+  /** Current upload status */
+  uploadStatus: 'pending' | 'uploaded' | 'failed' | 'skipped';
+
+  /** Date when file was uploaded (if uploaded) */
+  uploadDate?: Date;
+
+  /** Error message from failed upload attempt */
+  uploadError?: string;
+
+  /** Number of upload attempts made */
+  uploadAttempts: number;
+
+  /** Whether file has been deleted from phone after upload */
+  fileDeletedFromPhone: boolean;
+}

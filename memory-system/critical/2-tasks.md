@@ -261,6 +261,59 @@
 
 ---
 
+## NEW USER REQUEST (Per-Chat Scanner - 2025-09-14)
+
+## [🔄] dwarf - TASK-024 - Per-Chat Media File Analyzer **IN PROGRESS**
+- Priority: 1 (Critical - User Request)
+- Description: Implement chat-specific media file analysis from msgstore.db messages table for given JID
+- Depends on: TASK-023 (chat metadata working ✅), better-sqlite3 ✅
+- Phase: Per-Chat File Analysis
+- Assigned: 2025-09-14 (current session)
+- Specification: TASK-024-dwarf-spec.md
+- Started: 2025-09-14 18:45
+- Branch: TASK-024-dwarf
+- Conflicts: None
+- **Acceptance Criteria**:
+  - [ ] Extract media files for specific chat JID from messages table
+  - [ ] Read message.data (JSON blob) to get media file information
+  - [ ] Match file names to actual WhatsApp media files on filesystem
+  - [ ] Return structured data with file info, message timestamps, senders
+  - [ ] Handle different media types (photo, video, document, audio)
+  - [ ] KISS: Focus on file listing, not complex message parsing
+
+## [ ] dwarf - TASK-025 - Per-Chat Google Sheets Integration **ASSIGNED**
+- Priority: 1 (Critical - User Request)
+- Description: Create per-chat Google Sheets with media file listings and upload tracking columns
+- Depends on: TASK-024 (chat file analyzer)
+- Phase: Per-Chat Sheets Creation
+- Assigned: 2025-09-14 (current session)
+- Specification: TASK-025-dwarf-spec.md
+- **Acceptance Criteria**:
+  - [ ] Create sheet at `/WhatsApp Google Uploader/[chat_name]_[JID]`
+  - [ ] Required columns: file ID, name, type, size, message date, sender, upload status, upload date, upload error, etc.
+  - [ ] Upload tracking columns: upload status, upload date, file deleted from phone, error message, attempt count
+  - [ ] Directory/album columns: directory/album name, directory/album link, file/media link
+  - [ ] Use existing SheetsDatabase pattern for consistency
+  - [ ] KISS: Simple sheet structure, no complex formatting
+
+## [ ] dwarf - TASK-026 - CLI `scanchat` Command Implementation **ASSIGNED**
+- Priority: 1 (Critical - User Request)
+- Description: Add `scanchat --chat="JID"` command to CLI that analyzes specific chat and creates/updates its spreadsheet
+- Depends on: TASK-024, TASK-025 (chat analyzer and sheets)
+- Phase: CLI Integration
+- Assigned: 2025-09-14 (current session)
+- Specification: TASK-026-dwarf-spec.md
+- **Acceptance Criteria**:
+  - [ ] `npm run scanchat --chat="JID"` command works
+  - [ ] Accepts chat JID parameter (required)
+  - [ ] Lists all media files found in that chat with metadata
+  - [ ] Creates/updates per-chat Google Sheets automatically
+  - [ ] Shows progress and completion with spreadsheet URL
+  - [ ] Error handling for invalid JID or missing msgstore.db
+  - [ ] KISS: Simple command interface, no complex options
+
+---
+
 ## NEW MINIMAL TASK LIST (Post-Refactoring MVP)
 
 ## [✅] dwarf - TASK-016 - Implement CLI `scan` Command **COMPLETED**
@@ -319,20 +372,13 @@
     - flag sincronizacao (sync enabled flag)
     - idade maxima midia (max media age to keep on phone)
 
-## [ ] api - TASK-017 - Implement CLI `upload` Command
+## [❌] api - TASK-017 - Implement CLI `upload` Command **REPLACED**
 - Priority: 2 (High - MVP Essential)
-- Description: Add `upload` command to CLI that executes uploads using existing UploaderManager class
+- Description: ~~Add `upload` command to CLI that executes uploads using existing UploaderManager class~~
 - Depends on: Working UploaderManager ✅ (already implemented), TASK-016 (scan command), TASK-023 (chat sheets)
 - Phase: MVP CLI Implementation
-- **Acceptance Criteria**:
-  - [ ] `whatsapp-uploader upload` command works
-  - [ ] Authenticates using existing GoogleApis
-  - [ ] Uploads files using existing UploaderManager
-  - [ ] Shows progress with simple progress indicator
-  - [ ] Supports `--chat-id` parameter for organizing uploads
-  - [ ] Uses existing deduplication (skips already uploaded)
-  - [ ] KISS: Basic progress output, no complex UI
-  - [ ] Returns spreadsheet URL after completion
+- **REPLACED REASON**: User changed requirements - wants per-chat scanning with `scanchat --chat="JID"` command instead of general upload
+- **REPLACEMENT**: TASK-024, TASK-025, TASK-026 (per-chat scanner implementation)
 
 ## [ ] seer - TASK-018 - Update Tests for CLI Commands
 - Priority: 3 (Medium - Quality Assurance)

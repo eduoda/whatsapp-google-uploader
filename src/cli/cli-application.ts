@@ -330,9 +330,10 @@ export class CLIApplication {
 
           console.log('Scanning WhatsApp media files...\n');
 
-          // Create scanner with optional custom path
+          // Create scanner with custom path or config path
+          // AIDEV-NOTE: env-config-priority; use config.whatsappPath when no custom path (TASK-023 fix)
           const scanner = new WhatsAppScanner({
-            whatsappPath: customPath
+            whatsappPath: customPath || config.whatsappPath
           });
 
           // Use existing Scanner API
