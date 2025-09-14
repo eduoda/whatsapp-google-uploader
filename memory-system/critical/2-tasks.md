@@ -218,25 +218,25 @@
 
 ## NEW MINIMAL TASK LIST (Post-Refactoring MVP)
 
-## [🔄] dwarf - TASK-016 - Implement CLI `scan` Command **IN PROGRESS**
+## [✅] dwarf - TASK-016 - Implement CLI `scan` Command **COMPLETED**
 - Priority: 1 (Highest - MVP Essential)
 - Description: Add `scan` command to CLI that lists WhatsApp media files using existing Scanner class
 - Depends on: Working Scanner class ✅ (already implemented)
 - Phase: MVP CLI Implementation
-- Agent: dwarf (assigned)
+- Agent: dwarf (completed)
 - Specification: TASK-016-dwarf-spec.md
 - Started: 2025-09-13 15:30
-- Branch: TASK-016-dwarf
-- Conflicts: None
-- Planning: Will follow existing CLI command patterns in cli-application.ts
-- **Acceptance Criteria**:
-  - [ ] `whatsapp-uploader scan` command works
-  - [ ] Lists all WhatsApp media files with counts by type (photo/video/document/audio)
-  - [ ] Shows basic file information (name, type, size)
-  - [ ] Supports optional path parameter: `scan /custom/whatsapp/path`
-  - [ ] Uses existing Scanner class (no new functionality needed)
-  - [ ] KISS: Simple table output, no fancy formatting
-  - [ ] Error handling with helpful messages
+- Branch: TASK-016-dwarf (merged to main)
+- Completed: 2025-09-13 16:45
+- **Acceptance Criteria** ✅:
+  - [x] `whatsapp-uploader scan` command works
+  - [x] Lists all WhatsApp media files with counts by type (photo/video/document/audio)
+  - [x] Shows basic file information (name, type, size)
+  - [x] Supports optional path parameter: `scan /custom/whatsapp/path`
+  - [x] Uses existing Scanner class (no new functionality needed)
+  - [x] KISS: Simple table output, no fancy formatting
+  - [x] Error handling with helpful messages
+  - [x] CLI test added and passing
 
 ## [ ] api - TASK-017 - Implement CLI `upload` Command
 - Priority: 2 (High - MVP Essential)
