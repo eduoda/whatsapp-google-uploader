@@ -224,21 +224,24 @@
 - Completed: 2025-09-14 11:45
 - Report: TASK-019-architect-report.md
 
-## [ ] dwarf - TASK-020 - WhatsApp Database Decryption Implementation (Phase 1)
+## [✓] dwarf - TASK-020 - WhatsApp Database Decryption Implementation (Phase 1) **COMPLETED**
 - Priority: 1 (Critical - Core Feature)
 - Description: Implement `npm run decrypt` command using wa-crypt-tools Python library for decrypting .crypt15 files
 - Depends on: Python wa-crypt-tools installation
 - Phase: Phase 1 - Decryption Infrastructure
-- **Acceptance Criteria**:
-  - [ ] `npm run decrypt` command works
-  - [ ] Reads WHATSAPP_BACKUP_KEY from .env file
-  - [ ] Executes wa-crypt-tools with proper parameters
-  - [ ] Decrypts .crypt15 files to .db files
-  - [ ] Validates backup key format (64 hex characters)
-  - [ ] Provides clear error messages for common issues
-  - [ ] Follows KISS/YAGNI principles - minimal implementation
-  - [ ] Handles multiple crypt files in directory
-  - [ ] Creates 'decrypted/' subdirectory for output
+- Started: 2025-09-14 10:00
+- Branch: main (direct implementation)
+- Completed: 2025-09-14 12:00
+- **Acceptance Criteria** ✅:
+  - [✓] `npm run decrypt` command works
+  - [✓] Reads WHATSAPP_BACKUP_KEY from .env file
+  - [✓] Executes wa-crypt-tools with proper parameters
+  - [✓] Decrypts .crypt15 files to .db files
+  - [✓] Validates backup key format (64 hex characters)
+  - [✓] Provides clear error messages for common issues
+  - [✓] Follows KISS/YAGNI principles - minimal implementation
+  - [✓] Handles multiple crypt files in directory
+  - [✓] Creates 'decrypted/' subdirectory for output
 
 ## [ ] dwarf - TASK-021 - WhatsApp Database Chat Scanner Enhancement (Phase 2)
 - Priority: 2 (High - Core Feature)
