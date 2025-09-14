@@ -216,7 +216,17 @@ export class WhatsAppDecryptor {
 
 // CLI entry point
 if (require.main === module) {
-  const decryptor = new WhatsAppDecryptor();
+  // Get path from command line argument
+  const args = process.argv.slice(2);
+  const customPath = args[0];
+
+  const config: DecryptConfig = {};
+  if (customPath) {
+    config.whatsappPath = customPath;
+    console.log(`Using custom WhatsApp path: ${customPath}\n`);
+  }
+
+  const decryptor = new WhatsAppDecryptor(config);
   decryptor.decrypt().then(success => {
     process.exit(success ? 0 : 1);
   });

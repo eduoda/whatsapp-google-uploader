@@ -91,7 +91,8 @@ node dist/cli.js scan                    # Scan default WhatsApp location
 node dist/cli.js scan /path/to/whatsapp  # Scan custom path
 
 # Decrypt WhatsApp database (NEW - requires wa-crypt-tools)
-npm run decrypt                           # Decrypt .crypt15 files to access chat data
+npm run decrypt                           # Decrypt .crypt15 files (auto-detect path)
+npm run decrypt -- /path/to/whatsapp     # Decrypt with custom WhatsApp path
 ```
 
 ### Planned Commands (Not Yet Implemented)
@@ -196,9 +197,16 @@ For advanced features like chat-specific uploads, you can decrypt WhatsApp datab
 
 #### Usage:
 ```bash
+# Auto-detect WhatsApp path
 npm run decrypt
-# Decrypts .crypt15 files → decrypted/msgstore.db
-# Enables future chat-aware features
+
+# Or specify custom path
+npm run decrypt -- /path/to/WhatsApp
+
+# Example with test data
+npm run decrypt -- tests/mock-whatsapp/Android/media/com.whatsapp/WhatsApp
+
+# Output: decrypted/msgstore.db (SQLite database with chat data)
 ```
 
 ### Development Commands
