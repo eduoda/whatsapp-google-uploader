@@ -108,7 +108,46 @@ async function test() {
       }
     }
 
-    console.log('\n✓ All tests passed');
+    // Test 5: CLI scan command - Test the actual CLI integration
+    console.log('\nTesting CLI scan command...');
+    const { spawn } = require('child_process');
+
+    const cliScanTest = () => {
+      return new Promise((resolve, reject) => {
+        const child = spawn('node', ['dist/cli.js', 'scan', whatsappPath], {
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        let output = '';
+        let error = '';
+
+        child.stdout.on('data', (data) => {
+          output += data.toString();
+        });
+
+        child.stderr.on('data', (data) => {
+          error += data.toString();
+        });
+
+        child.on('close', (code) => {
+          if (code === 0 && output.includes('WhatsApp Media Files:') && output.includes('Total:')) {
+            console.log('CLI scan command: PASSED');
+            resolve();
+          } else {
+            console.log(`CLI scan command: FAILED (exit code: ${code})`);
+            console.log('Output:', output);
+            console.log('Error:', error);
+            reject(new Error(`CLI scan command failed with exit code: ${code}`));
+          }
+        });
+
+        child.on('error', reject);
+      });
+    };
+
+    await cliScanTest();
+
+    console.log('\n✓ All tests passed (including CLI scan command)');
     return 0;
 
   } catch (error) {

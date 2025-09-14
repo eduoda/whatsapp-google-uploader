@@ -6,6 +6,7 @@
 
 import { Command } from 'commander';
 import { config, envFileExists, createEnvFile } from '../config';
+import { FileInfo } from '../scanner';
 
 export class CLIApplication {
   private program: Command;
@@ -311,6 +312,81 @@ export class CLIApplication {
           console.log('\n✓ System is properly configured');
         } catch (error) {
           console.error('Configuration check failed:', (error as Error).message);
+          process.exit(1);
+        }
+      });
+
+    // Scan command - AIDEV-NOTE: scan-command; integrates existing Scanner with CLI
+    this.program
+      .command('scan')
+      .description('Scan WhatsApp directory for media files')
+      .argument('[path]', 'Custom WhatsApp path (optional)')
+      .action(async (customPath) => {
+        try {
+          const { WhatsAppScanner } = require('../scanner');
+
+          console.log('Scanning WhatsApp media files...\n');
+
+          // Create scanner with optional custom path
+          const scanner = new WhatsAppScanner({
+            whatsappPath: customPath
+          });
+
+          // Use existing Scanner API
+          const files = customPath ?
+            await scanner.scan(customPath) :
+            await scanner.findFiles();
+
+          if (files.length === 0) {
+            console.log('No WhatsApp media files found.');
+            if (!customPath) {
+              console.log('\nTips:');
+              console.log('- Make sure WhatsApp is installed');
+              console.log('- Try specifying custom path: scan /path/to/whatsapp');
+              console.log('- Use "whatsapp-uploader check" to verify configuration');
+            }
+            return;
+          }
+
+          // Group by type and display
+          const grouped: Record<string, FileInfo[]> = files.reduce((acc: Record<string, FileInfo[]>, file: FileInfo) => {
+            if (!acc[file.type]) {
+              acc[file.type] = [];
+            }
+            acc[file.type]!.push(file);
+            return acc;
+          }, {});
+
+          // Display results (simple format)
+          console.log('WhatsApp Media Files:\n');
+
+          for (const [type, typeFiles] of Object.entries(grouped)) {
+            const totalSizeForType = typeFiles.reduce((sum: number, f: FileInfo) => sum + f.size, 0);
+            console.log(`${type.toUpperCase()}: ${typeFiles.length} files (${(totalSizeForType / 1024 / 1024).toFixed(1)} MB)`);
+
+            // Show first few files as examples
+            typeFiles.slice(0, 3).forEach((file: FileInfo) => {
+              console.log(`  - ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+            });
+            if (typeFiles.length > 3) {
+              console.log(`  ... and ${typeFiles.length - 3} more`);
+            }
+            console.log();
+          }
+
+          // Summary
+          const totalSize = files.reduce((sum: number, f: FileInfo) => sum + f.size, 0);
+          const totalCount = files.length;
+          console.log(`Total: ${totalCount} files, ${(totalSize / 1024 / 1024).toFixed(1)} MB`);
+
+        } catch (error) {
+          console.error('Scan failed:', (error as Error).message);
+          if ((error as Error).message.includes('not found')) {
+            console.log('\nTips:');
+            console.log('- Make sure WhatsApp is installed');
+            console.log('- Try specifying custom path: scan /path/to/whatsapp');
+            console.log('- Use "whatsapp-uploader check" to verify configuration');
+          }
           process.exit(1);
         }
       });

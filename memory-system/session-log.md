@@ -8,6 +8,9 @@
 - **TASK-014 REVIEW COMPLETED**: Thoroughly validated dwarf agent's API simplification work
 - **CODE ANALYSIS**: Verified 36% code reduction (1,088 → 410 lines), 18 files removed, 976 net lines deleted
 - **FUNCTIONALITY VERIFICATION**: Confirmed actual upload implementation (`googleApis.uploadFile()` with real `result.id`)
+- **TASK-016 ORCHESTRATION**: Analyzed current state, created dwarf specification for CLI scan command
+- **TASK ASSIGNMENT**: Assigned TASK-016 to dwarf agent with complete specification (TASK-016-dwarf-spec.md)
+- **REQUIREMENTS ANALYSIS**: Confirmed Scanner class ready, CLI structure ready, simple integration needed
 - **SMART ROUTING CONFIRMED**: MIME-type based routing (photos→Google Photos, documents→Google Drive) working
 - **CONTENT HASHING VERIFIED**: Proper SHA-256 content-based hashing implemented (not filepath)
 - **TOKEN MANAGEMENT SIMPLIFIED**: File-based JSON storage with 0o600 permissions (no AES encryption)
@@ -776,5 +779,67 @@ The project foundation is **100% complete** and ready for Phase 1 development. A
 
 **Status**: TASK-014 ready for immediate execution by dwarf agent
 **Impact**: Critical step toward final system simplification and completion
+
+### 2025-09-13 - Architect Project Analysis Session
+
+**Action**: Comprehensive project analysis to validate implementation claims vs reality
+
+**Analysis Results**:
+
+#### WHAT'S ACTUALLY WORKING ✅
+- **Google OAuth Authentication** - Full desktop app OAuth flow with local server + manual fallback
+- **Google Photos Upload** - Real uploadToPhotos() method with binary uploads and album creation
+- **Google Drive Upload** - Real uploadToDrive() method with folder creation and file streaming
+- **WhatsApp Directory Scanning** - Scanner class finds and categorizes media files
+- **Google Sheets Database** - SheetsDatabase class for cloud persistence (11K LOC implementation)
+- **File Categorization** - categorizeFile() function routes photos→Photos, docs→Drive
+- **Test Suite** - Functional tests verify real production code paths with actual uploads
+
+#### CLI IMPLEMENTATION STATUS 🔄
+- **Working Commands**: `auth`, `setup`, `check` (3/7 commands)
+- **Missing Commands**: `scan`, `upload`, `status`, `logs` (4/7 commands)
+
+#### UPLOAD ORCHESTRATION STATUS 🚧
+- **UploaderManager class exists** with proper structure
+- **Real upload integration** - calls googleApis.uploadFile() which routes correctly
+- **Progress tracking** - Updates Google Sheets database
+- **File hashing** - calculateFileHash() for deduplication
+- **BUT**: Missing CLI integration - no commands to trigger uploads
+
+#### DISCREPANCIES FOUND ❌
+- **README.md claim**: "CLI Commands - Not Yet Implemented"
+- **REALITY**: CLI commands partially implemented (3/7 working)
+- **2-tasks.md status**: TASK-006 marked as "REOPENED - 20% COMPLETE"
+- **REALITY**: Upload orchestration ~80% complete, just needs CLI integration
+
+**Status**: Foundation is much more complete than documented. Main gap is CLI command implementation.
+
+---
+
+2025-09-13 16:00 - **ARCHITECT POST-REFACTORING ANALYSIS COMPLETE**
+
+#### Current State After Major Refactoring ✅
+- **10 TypeScript files total** (~1,913 lines, reduced from ~11K)
+- **Working Components**: GoogleApis ✅, Scanner ✅, SheetsDatabase ✅, UploaderManager ✅
+- **Working CLI commands**: `auth` ✅, `setup` ✅, `check` ✅ (3/7 implemented)
+- **Functional tests**: Real API integration tests working ✅
+
+#### Missing CLI Commands (Never Implemented) ❌
+- `scan` command - list chats/media files
+- `upload` command - execute actual uploads
+- `status` command - progress tracking
+- `logs` command - activity logs
+
+#### Architecture Quality ✅
+- KISS: Unified GoogleApis class (no separate Auth/Drive/Photos classes)
+- DRY: Single authentication, shared across components
+- YAGNI: Simple Google Sheets persistence (no complex database)
+- Working upload orchestration with deduplication
+
+#### Action Plan
+1. Cancel all outdated pre-refactoring tasks
+2. Create minimal task list for missing CLI commands
+3. Focus on MVP: `scan` and `upload` commands only
+4. Defer status/logs per YAGNI principle
 
 ---
