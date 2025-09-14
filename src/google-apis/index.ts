@@ -23,6 +23,7 @@ export class GoogleApis {
   public drive: drive_v3.Drive; // Made public for testing
   private readonly config: GoogleApisConfig;
   private readonly tokenPath: string;
+  private albumCache: Map<string, string> = new Map(); // Cache album title -> ID
 
   constructor(config: GoogleApisConfig) {
     this.config = config;
@@ -369,30 +370,63 @@ export class GoogleApis {
   private async createOrFindAlbum(title: string): Promise<string> {
     await this.ensureAuthenticated();
 
-    // Try to find existing album first (basic search)
+    // Check cache first
+    if (this.albumCache.has(title)) {
+      const cachedId = this.albumCache.get(title)!;
+      console.log(`Using cached album: ${title} (ID: ${cachedId})`);
+      return cachedId;
+    }
+
+    // Try to find existing album first with pagination support
     try {
-      const searchResponse = await axios.get(
-        'https://photoslibrary.googleapis.com/v1/albums',
-        {
-          headers: {
-            'Authorization': `Bearer ${this.auth.credentials.access_token}`,
-            'Content-Type': 'application/json'
-          }
+      let pageToken: string | undefined;
+      let allAlbums: any[] = [];
+
+      // Search through all pages of albums (Google Photos paginates results)
+      do {
+        const params: any = {
+          pageSize: 50 // Max allowed by API
+        };
+
+        if (pageToken) {
+          params.pageToken = pageToken;
         }
-      );
 
-      const albums = searchResponse.data.albums || [];
-      const existingAlbum = albums.find((album: any) => album.title === title);
+        const searchResponse = await axios.get(
+          'https://photoslibrary.googleapis.com/v1/albums',
+          {
+            headers: {
+              'Authorization': `Bearer ${this.auth.credentials.access_token}`,
+              'Content-Type': 'application/json'
+            },
+            params
+          }
+        );
 
-      if (existingAlbum) {
-        return existingAlbum.id;
-      }
+        const albums = searchResponse.data.albums || [];
+        allAlbums = allAlbums.concat(albums);
+
+        // Check current page for matching album
+        const existingAlbum = albums.find((album: any) => album.title === title);
+        if (existingAlbum) {
+          console.log(`Found existing album: ${title} (ID: ${existingAlbum.id})`);
+          this.albumCache.set(title, existingAlbum.id); // Cache the album ID
+          return existingAlbum.id;
+        }
+
+        pageToken = searchResponse.data.nextPageToken;
+      } while (pageToken);
+
+      console.log(`Album '${title}' not found among ${allAlbums.length} albums, creating new one`);
     } catch (searchError) {
+      console.error('Error searching for albums:', (searchError as any).response?.data || (searchError as Error).message);
       console.warn('Warning: Could not search for existing albums, creating new one');
     }
 
     // Create new album if not found
-    return this.createAlbum(title);
+    const newAlbumId = await this.createAlbum(title);
+    this.albumCache.set(title, newAlbumId); // Cache the new album ID
+    return newAlbumId;
   }
 
   /**
