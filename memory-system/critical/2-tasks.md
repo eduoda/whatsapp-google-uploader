@@ -263,7 +263,7 @@
 
 ## NEW USER REQUEST (Per-Chat Scanner - 2025-09-14)
 
-## [🔄] dwarf - TASK-024 - Per-Chat Media File Analyzer **IN PROGRESS**
+## [✓] dwarf - TASK-024 - Per-Chat Media File Analyzer **COMPLETED**
 - Priority: 1 (Critical - User Request)
 - Description: Implement chat-specific media file analysis from msgstore.db messages table for given JID
 - Depends on: TASK-023 (chat metadata working ✅), better-sqlite3 ✅
@@ -271,30 +271,39 @@
 - Assigned: 2025-09-14 (current session)
 - Specification: TASK-024-dwarf-spec.md
 - Started: 2025-09-14 18:45
-- Branch: TASK-024-dwarf
+- Branch: TASK-024-dwarf (pushed)
 - Conflicts: None
-- **Acceptance Criteria**:
-  - [ ] Extract media files for specific chat JID from messages table
-  - [ ] Read message.data (JSON blob) to get media file information
-  - [ ] Match file names to actual WhatsApp media files on filesystem
-  - [ ] Return structured data with file info, message timestamps, senders
-  - [ ] Handle different media types (photo, video, document, audio)
-  - [ ] KISS: Focus on file listing, not complex message parsing
+- Completed: 2025-09-14 20:15
+- Report: TASK-024-dwarf-report.md
+- **Acceptance Criteria** ✅ ALL COMPLETED:
+  - [✅] Extract media files for specific chat JID from messages table
+  - [✅] Read message.data (JSON blob) to get media file information (N/A - WhatsApp uses message_media table)
+  - [✅] Match file names to actual WhatsApp media files on filesystem
+  - [✅] Return structured data with file info, message timestamps, senders
+  - [✅] Handle different media types (photo, video, document, audio)
+  - [✅] KISS: Focus on file listing, not complex message parsing
 
-## [ ] dwarf - TASK-025 - Per-Chat Google Sheets Integration **ASSIGNED**
+## [✓] dwarf - TASK-025 - Per-Chat Google Sheets Integration **COMPLETED**
 - Priority: 1 (Critical - User Request)
 - Description: Create per-chat Google Sheets with media file listings and upload tracking columns
-- Depends on: TASK-024 (chat file analyzer)
+- Depends on: TASK-024 (chat file analyzer ✅)
 - Phase: Per-Chat Sheets Creation
 - Assigned: 2025-09-14 (current session)
 - Specification: TASK-025-dwarf-spec.md
-- **Acceptance Criteria**:
-  - [ ] Create sheet at `/WhatsApp Google Uploader/[chat_name]_[JID]`
-  - [ ] Required columns: file ID, name, type, size, message date, sender, upload status, upload date, upload error, etc.
-  - [ ] Upload tracking columns: upload status, upload date, file deleted from phone, error message, attempt count
-  - [ ] Directory/album columns: directory/album name, directory/album link, file/media link
-  - [ ] Use existing SheetsDatabase pattern for consistency
-  - [ ] KISS: Simple sheet structure, no complex formatting
+- Started: 2025-09-14 20:45
+- Worktree: TASK-025-dwarf
+- Branch: TASK-025-dwarf
+- Conflicts: None
+- Planning: TASK-025-dwarf-planning.md
+- Completed: 2025-09-14 22:15
+- Report: TASK-025-dwarf-report.md
+- **Acceptance Criteria** ✅ ALL COMPLETED:
+  - [✅] Create sheet at `/WhatsApp Google Uploader/[chat_name]_[JID]`
+  - [✅] Required columns: file ID, name, type, size, message date, sender, upload status, upload date, upload error, etc.
+  - [✅] Upload tracking columns: upload status, upload date, file deleted from phone, error message, attempt count
+  - [✅] Directory/album columns: directory/album name, directory/album link, file/media link
+  - [✅] Use existing SheetsDatabase pattern for consistency
+  - [✅] KISS: Simple sheet structure, no complex formatting
 
 ## [ ] dwarf - TASK-026 - CLI `scanchat` Command Implementation **ASSIGNED**
 - Priority: 1 (Critical - User Request)

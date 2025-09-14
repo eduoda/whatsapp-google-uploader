@@ -32,6 +32,14 @@ export class GoogleApis {
   }
 
   /**
+   * Get the OAuth2 client for use with other Google APIs
+   * AIDEV-NOTE: auth-getter; provides access to authenticated OAuth2Client for SheetsDatabase
+   */
+  get authClient(): OAuth2Client {
+    return this.auth;
+  }
+
+  /**
    * Initialize authentication with credentials file
    * AIDEV-NOTE: auth-initialization; simplified authentication setup
    */

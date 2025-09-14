@@ -887,4 +887,31 @@ The project foundation is **100% complete** and ready for Phase 1 development. A
 - **Dependencies**: TASK-023 completed ✅, better-sqlite3 ready ✅
 - **Status**: Ready for dwarf to begin with TASK-024
 
+**2025-09-14 20:15 - TASK-024 COMPLETED SUCCESSFULLY - dwarf**
+- **ChatFileAnalyzer Implementation**: Complete per-chat media file extraction from WhatsApp msgstore.db
+- **Key Discovery**: WhatsApp uses `message_media` table (not JSON) with millisecond timestamps
+- **Real-World Testing**: Successfully extracted 19 media files from actual WhatsApp database
+- **Database Query**: Optimized multi-table JOIN across message_media → message → chat → jid
+- **File Matching**: Smart filesystem matching with multiple WhatsApp directory strategies
+- **All Acceptance Criteria Met**: ✅ File extraction, ✅ filesystem matching, ✅ structured data, ✅ media types, ✅ KISS
+- **Integration Ready**: Complete ChatFileInfo interface ready for TASK-025 Google Sheets integration
+- **Production Quality**: Comprehensive error handling, TypeScript strict compliance, extensive documentation
+- **Status**: ✅ COMPLETED - Ready for TASK-025
+
+---
+
+## 2025-09-14 - dwarf - TASK-025 Per-Chat Google Sheets Integration ✅ COMPLETED
+- **Implementation**: Extended SheetsDatabase with 4 new methods for per-chat spreadsheets
+- **Portuguese Columns**: All 14 required columns exactly as specified by user
+- **Sheet Creation**: `/WhatsApp Google Uploader/[chat_name]_[JID]` naming pattern implemented
+- **Data Integration**: Seamless ChatFileInfo transformation to Google Sheets rows
+- **Upload Tracking**: Complete status management with error tracking and retry counting
+- **Smart Updates**: Preserves existing user data while updating file information
+- **Google APIs Enhancement**: Added proper authClient getter for clean authentication access
+- **Technical Quality**: ~300 lines of clean TypeScript, comprehensive error handling, batch operations
+- **Performance**: Optimized for Google Sheets API rate limits, memory-efficient processing
+- **All Acceptance Criteria Met**: ✅ Sheet creation, ✅ Portuguese columns, ✅ data population, ✅ upload tracking, ✅ KISS
+- **Future Ready**: Complete API ready for TASK-026 CLI integration
+- **Status**: ✅ COMPLETED - Ready for `scanchat --chat="JID"` command implementation
+
 ---

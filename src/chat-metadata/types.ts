@@ -274,3 +274,37 @@ export interface ChatFileInfo {
   /** Whether file has been deleted from phone after upload */
   fileDeletedFromPhone: boolean;
 }
+
+// AIDEV-NOTE: Per-Chat Sheets Manager interfaces for TASK-025
+/**
+ * Interface for per-chat Google Sheets management
+ * Provides methods for creating and updating chat-specific file tracking sheets
+ */
+export interface PerChatSheetsManager {
+  // Main operations
+  createChatFileSheet(chatJid: string, chatName: string): Promise<string>;
+  saveChatFiles(chatJid: string, chatName: string, files: ChatFileInfo[]): Promise<void>;
+  getChatFileSheetUrl(chatJid: string, chatName: string): Promise<string | null>;
+
+  // File tracking
+  updateFileUploadStatus(
+    chatJid: string,
+    chatName: string,
+    fileId: string,
+    status: UploadStatusUpdate
+  ): Promise<void>;
+}
+
+/**
+ * Upload status update information for file tracking
+ */
+export interface UploadStatusUpdate {
+  uploadStatus: 'pending' | 'uploaded' | 'failed' | 'skipped';
+  uploadDate?: Date;
+  uploadError?: string;
+  uploadAttempts?: number;
+  directoryName?: string;
+  directoryLink?: string;
+  fileLink?: string;
+  fileDeletedFromPhone?: boolean;
+}
