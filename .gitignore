@@ -123,8 +123,7 @@ credentials.json
 .parcel-cache/
 
 # Test files
-test-data/
-mock-whatsapp/
+tests/mock-whatsapp/Android/
 
 # TypeScript
 *.tsbuildinfo
