@@ -98,7 +98,7 @@ export class WhatsAppDecryptor {
     return true;
   }
 
-  async findCryptFiles(): Promise<string[]> {
+  async findMostRecentCryptFile(): Promise<string | null> {
     const databasesPath = path.join(this.whatsappPath, 'Databases');
 
     try {
@@ -108,65 +108,83 @@ export class WhatsAppDecryptor {
       if (cryptFiles.length === 0) {
         console.log('\n⚠️  No encrypted database files found.');
         console.log(`Searched in: ${databasesPath}\n`);
-        return [];
+        return null;
       }
 
-      return cryptFiles.map(f => path.join(databasesPath, f));
+      // Sort files by name (they contain dates) and get the most recent
+      cryptFiles.sort().reverse();
+      const mostRecent = cryptFiles[0];
+
+      console.log(`\n📂 Found ${cryptFiles.length} encrypted database(s)`);
+      console.log(`   Selecting most recent: ${mostRecent}`);
+
+      return path.join(databasesPath, mostRecent!);
     } catch (error) {
       console.error(`\n❌ Cannot access WhatsApp databases directory: ${databasesPath}`);
       console.log('Make sure the path exists and you have read permissions.\n');
-      return [];
+      return null;
     }
   }
 
   async decryptFile(cryptFile: string, outputFile: string): Promise<boolean> {
     console.log(`\n📦 Decrypting: ${path.basename(cryptFile)}`);
-    console.log('   This may take a while for large files...');
+
+    // Get file size
+    try {
+      const stats = await fs.stat(cryptFile);
+      const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+      console.log(`   File size: ${sizeMB} MB`);
+      console.log('   This may take a while for large files...');
+    } catch {}
 
     try {
-      // Build command
-      let command: string;
-      const { execSync } = require('child_process');
+      const { spawn } = require('child_process');
 
-      // Check if wadecrypt is available directly
-      try {
-        execSync('wadecrypt --help', { stdio: 'ignore' });
-        command = `wadecrypt ${this.backupKey} "${cryptFile}" "${outputFile}"`;
-      } catch {
-        // Use python module method
-        command = `python3 -m wa_crypt_tools.wadecrypt ${this.backupKey} "${cryptFile}" "${outputFile}"`;
-      }
+      // Use python module method
+      const args = ['-m', 'wa_crypt_tools.wadecrypt', this.backupKey, cryptFile, outputFile];
 
-      // Execute decryption
-      const result = execSync(command, {
-        encoding: 'utf-8',
-        stdio: 'pipe',
-        maxBuffer: 1024 * 1024 * 10 // 10MB buffer
+      console.log('   Starting decryption process...');
+
+      return new Promise<boolean>((resolve) => {
+        const proc = spawn('python3', args, {
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+
+        let lastOutput = '';
+        proc.stderr.on('data', (data: Buffer) => {
+          const output = data.toString();
+          // Only show meaningful output
+          if (output.includes('[I]') || output.includes('[C]')) {
+            lastOutput = output;
+            process.stdout.write(`   ${output.trim()}\n`);
+          }
+        });
+
+        proc.on('close', async (code: number) => {
+          if (code === 0 || lastOutput.includes('[I] Done')) {
+            try {
+              await fs.access(outputFile);
+              const stats = await fs.stat(outputFile);
+              const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+              console.log(`✅ Decrypted successfully → ${path.basename(outputFile)} (${sizeMB} MB)`);
+              resolve(true);
+            } catch {
+              console.error(`❌ Process completed but output file not found`);
+              resolve(false);
+            }
+          } else {
+            console.error(`❌ Decryption failed with code ${code}`);
+            resolve(false);
+          }
+        });
+
+        proc.on('error', (error: Error) => {
+          console.error(`❌ Failed to start decryption: ${error.message}`);
+          resolve(false);
+        });
       });
-
-      // Check if output file was created
-      try {
-        await fs.access(outputFile);
-        const stats = await fs.stat(outputFile);
-        const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
-        console.log(`✅ Decrypted successfully → ${path.basename(outputFile)} (${sizeMB} MB)`);
-        return true;
-      } catch {
-        console.error(`❌ Decryption seemed to succeed but output file not found`);
-        return false;
-      }
     } catch (error: any) {
-      console.error(`❌ Decryption failed for ${path.basename(cryptFile)}`);
-
-      const errorOutput = error.stdout || error.stderr || error.message || '';
-      if (errorOutput.includes('Bad key') || errorOutput.includes('Invalid file magic')) {
-        console.log('\n   ⚠️  The backup key does not match this backup file.');
-        console.log('   This can happen when:');
-        console.log('   1. The key is from a different WhatsApp backup');
-        console.log('   2. The key format is incorrect');
-      } else {
-        console.log(`   Error: ${errorOutput.substring(0, 200)}`);
-      }
+      console.error(`❌ Failed to decrypt: ${error.message}`);
       return false;
     }
   }
@@ -185,47 +203,59 @@ export class WhatsAppDecryptor {
       return false;
     }
 
-    // Find encrypted files
-    const cryptFiles = await this.findCryptFiles();
-    if (cryptFiles.length === 0) {
+    // Find most recent encrypted file
+    const cryptFile = await this.findMostRecentCryptFile();
+    if (!cryptFile) {
       return false;
     }
-
-    console.log(`\n📂 Found ${cryptFiles.length} encrypted database(s):`);
-    cryptFiles.forEach(f => console.log(`   - ${path.basename(f)}`));
 
     // Create output directory
     try {
       await fs.mkdir(this.outputDir, { recursive: true });
     } catch {}
 
-    // Decrypt each file
-    let successCount = 0;
-    for (const cryptFile of cryptFiles) {
-      const baseName = path.basename(cryptFile).replace(/\.crypt\d+$/, '');
-      const outputFile = path.join(this.outputDir, baseName);
+    // Decrypt the most recent backup to msgstore.db
+    const outputFile = path.join(this.outputDir, 'msgstore.db');
 
-      if (await this.decryptFile(cryptFile, outputFile)) {
-        successCount++;
+    // Check if already decrypted
+    try {
+      await fs.access(outputFile);
+      const stats = await fs.stat(outputFile);
+      const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+      console.log(`\n⚠️  Decrypted database already exists: msgstore.db (${sizeMB} MB)`);
+      console.log('   Delete it first if you want to decrypt again.\n');
+
+      const readline = require('readline');
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+
+      const answer = await new Promise<string>((resolve) => {
+        rl.question('Do you want to overwrite it? (y/N): ', resolve);
+      });
+      rl.close();
+
+      if (answer.toLowerCase() !== 'y') {
+        console.log('Decryption cancelled.\n');
+        return true; // Return true since file exists
       }
+    } catch {
+      // File doesn't exist, proceed
     }
+
+    // Decrypt the file
+    const success = await this.decryptFile(cryptFile, outputFile);
 
     // Summary
     console.log('\n================================\n');
-    if (successCount > 0) {
-      console.log(`✅ Decryption complete! ${successCount}/${cryptFiles.length} files decrypted.`);
-      console.log(`📁 Output directory: ${this.outputDir}\n`);
-
-      // Check if msgstore.db exists
-      const msgstorePath = path.join(this.outputDir, 'msgstore.db');
-      try {
-        await fs.access(msgstorePath);
-        console.log('💡 msgstore.db is now available for chat analysis.\n');
-      } catch {}
-
+    if (success) {
+      console.log(`✅ Decryption complete!`);
+      console.log(`📁 Output: ${outputFile}\n`);
+      console.log('💡 msgstore.db is now available for chat analysis.\n');
       return true;
     } else {
-      console.error(`❌ Failed to decrypt any files.\n`);
+      console.error(`❌ Failed to decrypt the backup.\n`);
       return false;
     }
   }
