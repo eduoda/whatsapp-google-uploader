@@ -281,16 +281,16 @@ After first authentication, token is saved to `token.json` for future use.
 Simple functional test that verifies real production code.
 
 ```bash
-# Run test with dry-run (default - no uploads)
+# Run test with dry-run (builds first, no uploads)
 npm test
 
-# Run test with custom WhatsApp directory
+# Run test with actual uploads (builds first, requires authentication)
+npm run test:live
+
+# Run test directly with custom WhatsApp directory (no build)
 node tests/test.js /path/to/whatsapp
 
-# Run test with actual uploads (requires authentication)
-node tests/test.js
-
-# Run test with dry-run and custom directory
+# Run test directly with dry-run and custom directory (no build)
 node tests/test.js --dry-run /path/to/whatsapp
 ```
 
