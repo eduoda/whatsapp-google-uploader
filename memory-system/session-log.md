@@ -941,3 +941,25 @@ The project foundation is **100% complete** and ready for Phase 1 development. A
 - **User Impact**: Users can now run `npm run upload --chat="JID"` for chat-specific file uploads with complete progress tracking
 
 ---
+
+**2025-09-14 (architect session) - TASK-029 ORGANIZATION STRUCTURE FIX CREATED**
+- **User Clarification**: Correct organization structure for uploaded files specified:
+  - Google Photos: Photos/videos → album `WA_[chat_name]_[JID]`
+  - Google Drive: Documents/audio → folder `/WhatsApp Google Uploader/[chat_name]_[JID]/`
+- **Task Created**: TASK-029 for dwarf to fix organization structure
+- **Priority**: 1 (Critical - fixes current implementation)
+- **Dependencies**: TASK-027 (upload command working ✅)
+- **Scope**: Minimal changes to existing upload logic following KISS principle
+- **Status**: 📋 **TASK-029 ASSIGNED TO DWARF** - High priority organization fix
+
+### 2025-09-14 15:30 - Architect Orchestration Session
+- **Role**: Architect Agent - Orchestrating TASK-029 Implementation
+- **Task**: TASK-029 - Fix Upload Organization Structure
+- **Action**: Marked TASK-029 as IN PROGRESS
+- **Agent**: Dwarf assigned to implement organization structure fix
+- **Mission**: Ensure proper album/folder naming:
+  - Google Photos: `WA_[chat_name]_[JID]` for photos/videos
+  - Google Drive: `/WhatsApp Google Uploader/[chat_name]_[JID]/` for documents/audio
+- **Next**: Create dwarf branch and begin implementation monitoring
+
+---

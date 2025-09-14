@@ -15,7 +15,7 @@ export interface Tokens extends Credentials {
   token_type?: string | null;
 }
 
-// AIDEV-NOTE: upload-results; unified result format for both Photos and Drive
+// AIDEV-NOTE: upload-results; unified result format for both Photos and Drive with organization info
 export interface UploadResult {
   id: string;
   name: string;
@@ -23,14 +23,22 @@ export interface UploadResult {
   mimeType: string;
   size?: number;
   createdTime?: string;
+  // Organization information (TASK-029)
+  albumName?: string; // For Photos uploads
+  albumId?: string;   // For Photos uploads
+  folderName?: string; // For Drive uploads
+  folderId?: string;   // For Drive uploads
 }
 
-// AIDEV-NOTE: upload-metadata; simplified metadata for uploads (renamed to avoid conflict)
+// AIDEV-NOTE: upload-metadata; simplified metadata for uploads with chat organization support (TASK-029)
 export interface UploadMetadata {
   filename: string;
   mimeType: string;
   description?: string;
   parentId?: string; // For Drive uploads
+  // Chat organization metadata (TASK-029)
+  chatName?: string; // Chat display name for album/folder creation
+  chatJid?: string;  // Chat JID for album/folder creation
 }
 
 // AIDEV-NOTE: progress-callback; simple progress reporting

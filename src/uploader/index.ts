@@ -20,6 +20,7 @@ export interface UploaderConfig extends GoogleApisConfig {
 
 export interface UploadOptions {
   chatId?: string;
+  chatName?: string; // TASK-029: chat display name for organization
   onProgress?: (progress: number) => void;
 }
 
@@ -86,12 +87,14 @@ export class UploaderManager {
           continue;
         }
         
-        // AIDEV-NOTE: actual-upload-implementation; real file upload using GoogleApis
+        // AIDEV-NOTE: actual-upload-implementation; real file upload using GoogleApis with chat organization (TASK-029)
         const result = await this.googleApis.uploadFile(
           file.path,
           {
             filename: file.name,
-            mimeType: file.mimeType
+            mimeType: file.mimeType,
+            chatName: options.chatName, // TASK-029: pass chat name for album/folder creation
+            chatJid: chatId // TASK-029: pass chat JID for album/folder creation
           },
           (uploaded, total) => {
             // Individual file progress - report partial progress for this file

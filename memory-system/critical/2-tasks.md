@@ -305,21 +305,60 @@
   - [✅] Use existing SheetsDatabase pattern for consistency
   - [✅] KISS: Simple sheet structure, no complex formatting
 
-## [ ] dwarf - TASK-026 - CLI `scanchat` Command Implementation **ASSIGNED**
+## [✓] dwarf - TASK-026 - CLI `scanchat` Command Implementation **COMPLETED**
 - Priority: 1 (Critical - User Request)
 - Description: Add `scanchat --chat="JID"` command to CLI that analyzes specific chat and creates/updates its spreadsheet
 - Depends on: TASK-024, TASK-025 (chat analyzer and sheets)
 - Phase: CLI Integration
 - Assigned: 2025-09-14 (current session)
 - Specification: TASK-026-dwarf-spec.md
+- Completed: 2025-09-14 22:45
+- Report: TASK-026-dwarf-report.md
+- **Acceptance Criteria** ✅:
+  - [✅] `npm run scanchat --chat="JID"` command works
+  - [✅] Accepts chat JID parameter (required)
+  - [✅] Lists all media files found in that chat with metadata
+  - [✅] Creates/updates per-chat Google Sheets automatically
+  - [✅] Shows progress and completion with spreadsheet URL
+  - [✅] Error handling for invalid JID or missing msgstore.db
+  - [✅] KISS: Simple command interface, no complex options
+
+## [✓] dwarf - TASK-027 - CLI `upload` Command Implementation **COMPLETED**
+- Priority: 1 (Critical - User Request)
+- Description: Add `upload --chat="JID"` command to CLI that uploads chat-specific files to Google Drive/Photos
+- Depends on: TASK-024, TASK-025, TASK-026 (chat analyzer, sheets, scanchat)
+- Phase: Upload Integration
+- Started: 2025-09-14 23:00
+- Branch: TASK-027-dwarf
+- Completed: 2025-09-14 integration completed
+- Report: TASK-027-dwarf-report.md
+- **Acceptance Criteria** ✅:
+  - [✅] `npm run upload --chat="JID"` command works
+  - [✅] Uploads files for specific chat to Google Drive/Photos
+  - [✅] Updates per-chat spreadsheet with upload status
+  - [✅] Error handling and progress tracking
+  - [✅] KISS: Simple upload interface
+
+## [🔄] dwarf - TASK-029 - Fix Upload Organization Structure **IN PROGRESS**
+- Priority: 1 (Critical - Organization Fix)
+- Description: Update upload command to use correct folder/album naming convention per user requirements
+- Depends on: TASK-027 (upload command working ✅)
+- Phase: Upload Enhancement
+- Started: 2025-09-14 15:30
+- Worktree: TASK-029-dwarf
+- Branch: TASK-029-dwarf
+- Conflicts: None
+- Planning: TASK-029-dwarf-planning.md
+- **Requirements**:
+  - Photos/videos should go to Google Photos album: `WA_[chat_name]_[JID]`
+  - Documents/audio should go to Google Drive folder: `/WhatsApp Google Uploader/[chat_name]_[JID]/`
+  - Update Google Sheets to track correct album/folder names
 - **Acceptance Criteria**:
-  - [ ] `npm run scanchat --chat="JID"` command works
-  - [ ] Accepts chat JID parameter (required)
-  - [ ] Lists all media files found in that chat with metadata
-  - [ ] Creates/updates per-chat Google Sheets automatically
-  - [ ] Shows progress and completion with spreadsheet URL
-  - [ ] Error handling for invalid JID or missing msgstore.db
-  - [ ] KISS: Simple command interface, no complex options
+  - [ ] Photos/videos uploaded to album `WA_[chat_name]_[JID]`
+  - [ ] Documents/audio uploaded to folder `/WhatsApp Google Uploader/[chat_name]_[JID]/`
+  - [ ] Google Sheets columns updated with correct naming
+  - [ ] Existing tests updated to reflect new structure
+  - [ ] KISS: Minimal changes to existing upload logic
 
 ---
 

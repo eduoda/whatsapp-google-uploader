@@ -269,8 +269,8 @@ export class GoogleApis {
   }
 
   /**
-   * Smart upload based on file MIME type
-   * AIDEV-NOTE: smart-upload; automatic routing to Photos or Drive based on file type
+   * Smart upload based on file MIME type with chat-specific organization
+   * AIDEV-NOTE: smart-upload-with-organization; automatic routing with album/folder creation per chat
    */
   async uploadFile(filePath: string, metadata?: UploadMetadata, onProgress?: ProgressCallback): Promise<UploadResult> {
     const mimeType = metadata?.mimeType || this.getMimeType(filePath);
@@ -282,9 +282,147 @@ export class GoogleApis {
       filename: metadata?.filename || path.basename(filePath)
     };
 
-    return category === 'photo' || category === 'video'
-      ? this.uploadToPhotos(filePath, fileMetadata, onProgress)
-      : this.uploadToDrive(filePath, fileMetadata, onProgress);
+    if (category === 'photo' || category === 'video') {
+      return this.uploadToPhotosWithOrganization(filePath, fileMetadata, onProgress);
+    } else {
+      return this.uploadToDriveWithOrganization(filePath, fileMetadata, onProgress);
+    }
+  }
+
+  /**
+   * Upload photo/video to Google Photos with chat-specific album organization
+   * AIDEV-NOTE: photos-upload-organized; creates/uses chat-specific album format WA_[chat_name]_[JID]
+   */
+  private async uploadToPhotosWithOrganization(filePath: string, metadata: UploadMetadata, onProgress?: ProgressCallback): Promise<UploadResult> {
+    // Upload to Photos (same as before)
+    const uploadResult = await this.uploadToPhotos(filePath, metadata, onProgress);
+
+    // If chat metadata is provided, organize into chat-specific album
+    if (metadata?.chatName && metadata?.chatJid) {
+      const albumName = `WA_${metadata.chatName}_${metadata.chatJid}`;
+
+      try {
+        // Create or find album
+        const albumId = await this.createOrFindAlbum(albumName);
+
+        // Add media item to album
+        await this.addToAlbum(albumId, [uploadResult.id]);
+
+        // Update result with album information
+        uploadResult.albumName = albumName;
+        uploadResult.albumId = albumId;
+
+      } catch (albumError) {
+        console.warn(`Warning: Failed to add to album ${albumName}:`, albumError);
+        // Continue - upload was successful, album organization failed
+      }
+    }
+
+    return uploadResult;
+  }
+
+  /**
+   * Upload document to Google Drive with chat-specific folder organization
+   * AIDEV-NOTE: drive-upload-organized; creates/uses chat-specific folder format /WhatsApp Google Uploader/[chat_name]_[JID]/
+   */
+  private async uploadToDriveWithOrganization(filePath: string, metadata: UploadMetadata, onProgress?: ProgressCallback): Promise<UploadResult> {
+    let parentFolderId: string | undefined;
+
+    // If chat metadata is provided, organize into chat-specific folder
+    if (metadata?.chatName && metadata?.chatJid) {
+      const folderName = `${metadata.chatName}_${metadata.chatJid}`;
+
+      try {
+        // Create or find "WhatsApp Google Uploader" root folder
+        const rootFolderId = await this.createOrFindFolder('WhatsApp Google Uploader');
+
+        // Create or find chat-specific folder inside root
+        parentFolderId = await this.createOrFindFolder(folderName, rootFolderId);
+
+      } catch (folderError) {
+        console.warn(`Warning: Failed to create folder structure:`, folderError);
+        // Continue without folder organization
+      }
+    }
+
+    // Upload to Drive with proper folder organization
+    const fileMetadata = {
+      ...metadata,
+      parentId: parentFolderId
+    };
+
+    const uploadResult = await this.uploadToDrive(filePath, fileMetadata, onProgress);
+
+    // Add folder information to result
+    if (parentFolderId && metadata?.chatName && metadata?.chatJid) {
+      uploadResult.folderName = `${metadata.chatName}_${metadata.chatJid}`;
+      uploadResult.folderId = parentFolderId;
+    }
+
+    return uploadResult;
+  }
+
+  /**
+   * Create album or find existing album by title
+   * AIDEV-NOTE: album-create-or-find; KISS implementation to avoid duplicate albums
+   */
+  private async createOrFindAlbum(title: string): Promise<string> {
+    await this.ensureAuthenticated();
+
+    // Try to find existing album first (basic search)
+    try {
+      const searchResponse = await axios.get(
+        'https://photoslibrary.googleapis.com/v1/albums',
+        {
+          headers: {
+            'Authorization': `Bearer ${this.auth.credentials.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const albums = searchResponse.data.albums || [];
+      const existingAlbum = albums.find((album: any) => album.title === title);
+
+      if (existingAlbum) {
+        return existingAlbum.id;
+      }
+    } catch (searchError) {
+      console.warn('Warning: Could not search for existing albums, creating new one');
+    }
+
+    // Create new album if not found
+    return this.createAlbum(title);
+  }
+
+  /**
+   * Create folder or find existing folder by name
+   * AIDEV-NOTE: folder-create-or-find; KISS implementation to avoid duplicate folders
+   */
+  private async createOrFindFolder(name: string, parentId?: string): Promise<string> {
+    await this.ensureAuthenticated();
+
+    // Try to find existing folder first
+    try {
+      const query = parentId
+        ? `name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+        : `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+
+      const searchResponse = await this.drive.files.list({
+        q: query,
+        fields: 'files(id, name)'
+      });
+
+      const folders = searchResponse.data.files || [];
+      if (folders.length > 0) {
+        return folders[0]!.id!;
+      }
+    } catch (searchError) {
+      console.warn('Warning: Could not search for existing folder, creating new one');
+    }
+
+    // Create new folder if not found
+    return this.createFolder(name, parentId);
   }
 
   /**
