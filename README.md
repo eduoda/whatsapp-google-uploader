@@ -1,45 +1,47 @@
 # WhatsApp Google Uploader
 
-🚀 Production-ready CLI application for uploading WhatsApp media to Google Photos and Google Drive with enterprise-grade reliability.
+🚀 Simple CLI tool for uploading WhatsApp media to Google Photos and Google Drive.
 
 ## Features
 
-- **Smart File Routing** - Photos/videos → Google Photos, Documents/audio → Google Drive
-- **Zero-Copy Architecture** - Direct streaming without temporary files
-- **Auto-Resume System** - Interruption recovery with cloud-based progress tracking
-- **SHA-256 Deduplication** - Prevent duplicate uploads with Google Sheets database
-- **Cross-Platform** - Works on Windows, macOS, Linux, and Android 11+ (Termux)
-- **Cloud Storage** - Uses Google Sheets for all persistence (no local database needed)
-- **Rate Limiting** - Respectful API usage with exponential backoff
-- **Enterprise Reliability** - Comprehensive error handling and retry mechanisms
+### ✅ Implemented
+- **Google OAuth Authentication** - Desktop app authentication flow
+- **Google Photos Upload** - Upload photos/videos with album support
+- **Google Drive Upload** - Upload documents and other files to folders
+- **WhatsApp Directory Scanning** - Find and categorize media files
+- **Google Sheets Database** - Track uploaded files with SHA-256 hashes
+- **File Categorization** - Smart routing (photos → Photos, docs → Drive)
+- **Test Suite** - Functional tests with mock WhatsApp structure
 
-## Project Status
+### 🚧 Not Yet Implemented
+- **CLI Commands** - `scan`, `upload`, `status`, `logs` commands
+- **Upload Orchestration** - Batch upload with progress tracking
+- **Resume System** - Recovery from interrupted uploads
+- **Deduplication Check** - Skip already uploaded files
+- **Rate Limiting** - API quota management
+- **Progress UI** - Real-time upload progress display
+- **Error Recovery** - Automatic retry with exponential backoff
+- **Album/Folder Selection** - Choose target album/folder via CLI
 
-⚠️ **In Development** - Core functionality implemented, CLI pending.
+## Current Status
 
-### What's Working ✅
-- Google OAuth authentication
-- Google Drive uploads
-- Google Photos uploads  
-- WhatsApp directory scanning
-- Google Sheets database
-- File deduplication with SHA-256
+⚠️ **Development Phase** - Basic modules work individually but CLI is incomplete.
 
-### What's Pending 🚧
-- CLI commands (scan, upload, status)
-- Complete upload orchestration
-- Progress tracking UI
+Currently, you can:
+1. Authenticate with Google (via `auth` command)
+2. Run tests to verify Google APIs work
+3. Scan WhatsApp directories programmatically
 
 ## Quick Start
 
 ### Installation
 
 ```bash
-# Install globally from npm
-npm install -g whatsapp-google-uploader
-
-# Or run directly with npx
-npx whatsapp-google-uploader --help
+# Clone and build from source (npm package not yet published)
+git clone https://github.com/eduoda/whatsapp-google-uploader.git
+cd whatsapp-google-uploader
+npm install --production
+npm run build
 ```
 
 ### Termux (Android) Installation
@@ -73,41 +75,28 @@ node dist/cli.js scan
 - ✅ **Minimal dependencies** - Only essential packages
 - ✅ **Comprehensive tests** - Full test suite for all modules
 
-### Setup
+### Available Commands (Currently Working)
 
-1. **Configure Google APIs**
-   ```bash
-   whatsapp-uploader setup
-   ```
+```bash
+# Authenticate with Google
+node dist/cli.js auth
 
-2. **Authenticate with Google**
-   ```bash
-   whatsapp-uploader auth
-   ```
+# Setup environment (creates .env file)
+node dist/cli.js setup
 
-3. **Scan available chats**
-   ```bash
-   whatsapp-uploader scan
-   # Or specify custom WhatsApp path (Android 11+)
-   whatsapp-uploader scan --whatsapp-path="/storage/emulated/0/Android/media/com.whatsapp/WhatsApp"
-   ```
+# Check configuration
+node dist/cli.js check
+```
 
-4. **Upload media**
-   ```bash
-   whatsapp-uploader upload --chat-id="ChatName"
-   # Or with custom path
-   whatsapp-uploader upload --chat-id="ChatName" --whatsapp-path="/custom/path/to/WhatsApp"
-   ```
+### Planned Commands (Not Yet Implemented)
 
-## Commands
-
-- `setup` - Initial system configuration
-- `auth` - Google authentication management
-- `scan` - Discover WhatsApp chats and media
-- `upload` - Upload media to Google services
-- `status` - Check upload progress and system status
-- `logs` - View detailed logs and error reports
-- `check` - Verify system configuration
+```bash
+# These commands are NOT YET WORKING:
+node dist/cli.js scan                    # Will scan WhatsApp directories
+node dist/cli.js upload --chat="ChatName" # Will upload media from specific chat
+node dist/cli.js status                   # Will show upload progress
+node dist/cli.js logs                     # Will display activity logs
+```
 
 ## Architecture
 
@@ -222,24 +211,22 @@ termux-setup-storage
 # Install Node.js
 pkg install nodejs
 
-# Install uploader
-npm install -g whatsapp-google-uploader
+# Clone and build (npm package not yet published)
+git clone https://github.com/eduoda/whatsapp-google-uploader.git
+cd whatsapp-google-uploader
+npm install --production
+npm run build
 ```
 
-### Windows
+### Windows/macOS/Linux
 
 ```bash
-# Install Node.js from nodejs.org
-# Install uploader via npm
-npm install -g whatsapp-google-uploader
-```
-
-### macOS/Linux
-
-```bash
-# Install Node.js via package manager or nodejs.org
-# Install uploader via npm
-npm install -g whatsapp-google-uploader
+# Install Node.js from nodejs.org or package manager
+# Clone and build (npm package not yet published)
+git clone https://github.com/eduoda/whatsapp-google-uploader.git
+cd whatsapp-google-uploader
+npm install --production
+npm run build
 ```
 
 ## Configuration
@@ -347,9 +334,9 @@ node tests/test.js tests/mock-whatsapp
 ### Common Issues
 
 1. **Authentication Failed**
-   - Delete `token.json` and authenticate again
+   - Delete `tokens/google-tokens.json` and authenticate again
    - Check if credentials.json is valid
-   - Verify API is enabled in Google Cloud Console
+   - Verify APIs are enabled in Google Cloud Console
 
 2. **"WhatsApp directory not found" (Android)**
    ```bash
@@ -367,24 +354,10 @@ node tests/test.js tests/mock-whatsapp
    - Check that redirect URI is exactly "http://localhost"
    - Recreate credentials as Desktop app type
 
-5. **Rate Limited**
-   - Wait for quota reset (usually hourly)
-   - Check Google Cloud Console quotas
-   - Reduce concurrent uploads in .env file
-
-### Logs and Debugging
-
-```bash
-# View recent logs
-whatsapp-uploader logs --tail
-
-# Enable debug mode
-export LOG_LEVEL=debug
-whatsapp-uploader upload --verbose
-
-# Check system status
-whatsapp-uploader status --detailed
-```
+5. **Commands not working**
+   - Most CLI commands are NOT YET IMPLEMENTED
+   - Currently only `auth`, `setup`, and `check` work
+   - Use the test suite to verify functionality
 
 ## Contributing
 
