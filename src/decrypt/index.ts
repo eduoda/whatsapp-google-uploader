@@ -9,6 +9,10 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { promisify } from 'util';
 import { exec as execCallback } from 'child_process';
+import { config } from 'dotenv';
+
+// Load environment variables
+config();
 
 const exec = promisify(execCallback);
 
@@ -54,9 +58,15 @@ export class WhatsAppDecryptor {
 
   async checkDependencies(): Promise<boolean> {
     try {
-      // Check if wa-crypt-tools is installed
-      const { stdout } = await exec('wadecrypt --help');
-      return stdout.includes('wadecrypt');
+      // Check if wa-crypt-tools is installed (try both methods)
+      try {
+        const { stdout } = await exec('wadecrypt --help');
+        return stdout.includes('wadecrypt');
+      } catch {
+        // Try via python module
+        const { stdout } = await exec('python3 -m wa_crypt_tools.wadecrypt --help');
+        return stdout.includes('wadecrypt');
+      }
     } catch {
       console.error('\n❌ wa-crypt-tools not found!');
       console.log('\nPlease install it first:');
@@ -110,48 +120,55 @@ export class WhatsAppDecryptor {
   }
 
   async decryptFile(cryptFile: string, outputFile: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      console.log(`\n📦 Decrypting: ${path.basename(cryptFile)}`);
+    console.log(`\n📦 Decrypting: ${path.basename(cryptFile)}`);
+    console.log('   This may take a while for large files...');
 
-      // Create key file temporarily (wa-crypt-tools needs it)
-      const keyFile = path.join(this.outputDir, 'backup.key');
-      require('fs').writeFileSync(keyFile, this.backupKey, 'hex');
+    try {
+      // Build command
+      let command: string;
+      const { execSync } = require('child_process');
 
-      // Run wadecrypt command
-      const wadecrypt = spawn('wadecrypt', [
-        keyFile,
-        cryptFile,
-        outputFile
-      ]);
+      // Check if wadecrypt is available directly
+      try {
+        execSync('wadecrypt --help', { stdio: 'ignore' });
+        command = `wadecrypt ${this.backupKey} "${cryptFile}" "${outputFile}"`;
+      } catch {
+        // Use python module method
+        command = `python3 -m wa_crypt_tools.wadecrypt ${this.backupKey} "${cryptFile}" "${outputFile}"`;
+      }
 
-      let output = '';
-      wadecrypt.stdout.on('data', (data) => {
-        output += data.toString();
+      // Execute decryption
+      const result = execSync(command, {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        maxBuffer: 1024 * 1024 * 10 // 10MB buffer
       });
 
-      wadecrypt.stderr.on('data', (data) => {
-        output += data.toString();
-      });
+      // Check if output file was created
+      try {
+        await fs.access(outputFile);
+        const stats = await fs.stat(outputFile);
+        const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+        console.log(`✅ Decrypted successfully → ${path.basename(outputFile)} (${sizeMB} MB)`);
+        return true;
+      } catch {
+        console.error(`❌ Decryption seemed to succeed but output file not found`);
+        return false;
+      }
+    } catch (error: any) {
+      console.error(`❌ Decryption failed for ${path.basename(cryptFile)}`);
 
-      wadecrypt.on('close', async (code) => {
-        // Clean up key file
-        try {
-          await fs.unlink(keyFile);
-        } catch {}
-
-        if (code === 0) {
-          console.log(`✅ Decrypted successfully → ${path.basename(outputFile)}`);
-          resolve(true);
-        } else {
-          console.error(`❌ Decryption failed for ${path.basename(cryptFile)}`);
-          if (output.includes('Bad key')) {
-            console.log('   The backup key appears to be incorrect.');
-          }
-          console.log(`   Error: ${output}`);
-          resolve(false);
-        }
-      });
-    });
+      const errorOutput = error.stdout || error.stderr || error.message || '';
+      if (errorOutput.includes('Bad key') || errorOutput.includes('Invalid file magic')) {
+        console.log('\n   ⚠️  The backup key does not match this backup file.');
+        console.log('   This can happen when:');
+        console.log('   1. The key is from a different WhatsApp backup');
+        console.log('   2. The key format is incorrect');
+      } else {
+        console.log(`   Error: ${errorOutput.substring(0, 200)}`);
+      }
+      return false;
+    }
   }
 
   async decrypt(): Promise<boolean> {
