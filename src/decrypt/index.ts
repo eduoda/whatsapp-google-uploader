@@ -98,7 +98,13 @@ export class WhatsAppDecryptor {
     return true;
   }
 
-  async findMostRecentCryptFile(): Promise<string | null> {
+  private extractDateFromFilename(filename: string): string | null {
+    // Extract date from filenames like msgstore-2024-01-15.1.db.crypt15
+    const match = filename.match(/msgstore-(\d{4}-\d{2}-\d{2})/);
+    return match && match[1] ? match[1] : null;
+  }
+
+  async findMostRecentCryptFile(): Promise<{ path: string; date: string } | null> {
     const databasesPath = path.join(this.whatsappPath, 'Databases');
 
     try {
@@ -118,7 +124,13 @@ export class WhatsAppDecryptor {
       console.log(`\n📂 Found ${cryptFiles.length} encrypted database(s)`);
       console.log(`   Selecting most recent: ${mostRecent}`);
 
-      return path.join(databasesPath, mostRecent!);
+      // Extract date from filename
+      const date = this.extractDateFromFilename(mostRecent!) || 'unknown';
+
+      return {
+        path: path.join(databasesPath, mostRecent!),
+        date: date
+      };
     } catch (error) {
       console.error(`\n❌ Cannot access WhatsApp databases directory: ${databasesPath}`);
       console.log('Make sure the path exists and you have read permissions.\n');
@@ -189,20 +201,22 @@ export class WhatsAppDecryptor {
     }
   }
 
-  async isAlreadyDecrypted(cryptFile: string, outputFile: string): Promise<boolean> {
-    // Check if output file exists and is from the same source
+  async isAlreadyDecrypted(date: string, outputFile: string): Promise<boolean> {
+    // Check if output file exists with the same date
     try {
-      const outputStats = await fs.stat(outputFile);
-      const cryptStats = await fs.stat(cryptFile);
+      await fs.stat(outputFile);
 
-      // Check if decrypted file is newer than encrypted file
-      // This means the current backup was already decrypted
-      if (outputStats.mtime >= cryptStats.mtime) {
-        const sizeMB = (outputStats.size / 1024 / 1024).toFixed(1);
-        console.log(`\n✅ Most recent backup already decrypted!`);
-        console.log(`   File: msgstore.db (${sizeMB} MB)`);
-        console.log(`   Created: ${outputStats.mtime.toLocaleString()}`);
-        console.log(`   Source: ${path.basename(cryptFile)}\n`);
+      // Extract date from the output filename
+      const outputBasename = path.basename(outputFile);
+      const dateMatch = outputBasename.match(/msgstore-(\d{4}-\d{2}-\d{2})/);
+      const outputDate = dateMatch ? dateMatch[1] : null;
+
+      if (outputDate === date) {
+        const stats = await fs.stat(outputFile);
+        const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+        console.log(`\n✅ Database from ${date} already decrypted!`);
+        console.log(`   File: ${outputBasename} (${sizeMB} MB)`);
+        console.log(`   No need to decrypt again.\n`);
         return true;
       }
     } catch {
@@ -211,10 +225,17 @@ export class WhatsAppDecryptor {
     return false;
   }
 
-  async cleanOldDecryptedFiles(): Promise<void> {
+  async cleanOldDecryptedFiles(keepDate: string): Promise<void> {
     try {
       const files = await fs.readdir(this.outputDir);
-      const dbFiles = files.filter(f => f.endsWith('.db') && f !== 'msgstore.db');
+      // Find all msgstore*.db files except the one we want to keep
+      const dbFiles = files.filter(f => {
+        if (!f.endsWith('.db')) return false;
+        if (!f.startsWith('msgstore')) return false;
+        // Don't delete the file with the current date
+        if (f.includes(keepDate)) return false;
+        return true;
+      });
 
       if (dbFiles.length > 0) {
         console.log(`\n🧹 Cleaning up ${dbFiles.length} old decrypted database(s)...`);
@@ -248,8 +269,8 @@ export class WhatsAppDecryptor {
     }
 
     // Find most recent encrypted file
-    const cryptFile = await this.findMostRecentCryptFile();
-    if (!cryptFile) {
+    const cryptInfo = await this.findMostRecentCryptFile();
+    if (!cryptInfo) {
       return false;
     }
 
@@ -258,54 +279,91 @@ export class WhatsAppDecryptor {
       await fs.mkdir(this.outputDir, { recursive: true });
     } catch {}
 
-    // Clean old decrypted files
-    await this.cleanOldDecryptedFiles();
-
-    // Decrypt the most recent backup to msgstore.db
-    const outputFile = path.join(this.outputDir, 'msgstore.db');
+    // Build output filename with date
+    const outputFile = path.join(this.outputDir, `msgstore-${cryptInfo.date}.db`);
 
     // Check if already decrypted from the same backup
-    if (await this.isAlreadyDecrypted(cryptFile, outputFile)) {
-      console.log('💡 No need to decrypt again - using existing file.\n');
+    if (await this.isAlreadyDecrypted(cryptInfo.date, outputFile)) {
+      // Create a symlink to msgstore.db for compatibility
+      const symlinkPath = path.join(this.outputDir, 'msgstore.db');
+      try {
+        await fs.unlink(symlinkPath);
+      } catch {}
+      try {
+        await fs.symlink(path.basename(outputFile), symlinkPath);
+      } catch {}
       return true;
     }
 
-    // Check if an older decrypted file exists
+    // Clean old decrypted files (keep the one we're about to create)
+    await this.cleanOldDecryptedFiles(cryptInfo.date);
+
+    // Check if any older decrypted file exists
     try {
-      await fs.access(outputFile);
-      const stats = await fs.stat(outputFile);
-      const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
-      console.log(`\n⚠️  Found older decrypted database: msgstore.db (${sizeMB} MB)`);
-      console.log('   A newer backup is available for decryption.\n');
+      const files = await fs.readdir(this.outputDir);
+      const existingDb = files.find(f => f.startsWith('msgstore-') && f.endsWith('.db'));
 
-      const readline = require('readline');
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-      });
+      if (existingDb) {
+        const existingPath = path.join(this.outputDir, existingDb);
+        const stats = await fs.stat(existingPath);
+        const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+        const existingDate = this.extractDateFromFilename(existingDb);
 
-      const answer = await new Promise<string>((resolve) => {
-        rl.question('Do you want to decrypt the newer backup? (Y/n): ', resolve);
-      });
-      rl.close();
+        console.log(`\n⚠️  Found older decrypted database from ${existingDate}: ${existingDb} (${sizeMB} MB)`);
+        console.log(`   A newer backup from ${cryptInfo.date} is available for decryption.\n`);
 
-      if (answer.toLowerCase() === 'n') {
-        console.log('Using existing decrypted database.\n');
-        return true;
+        const readline = require('readline');
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+
+        const answer = await new Promise<string>((resolve) => {
+          rl.question('Do you want to decrypt the newer backup? (Y/n): ', resolve);
+        });
+        rl.close();
+
+        if (answer.toLowerCase() === 'n') {
+          console.log(`Using existing database from ${existingDate}.\n`);
+          // Create symlink to the existing file
+          const symlinkPath = path.join(this.outputDir, 'msgstore.db');
+          try {
+            await fs.unlink(symlinkPath);
+          } catch {}
+          try {
+            await fs.symlink(existingDb, symlinkPath);
+          } catch {}
+          return true;
+        }
       }
     } catch {
-      // File doesn't exist, proceed
+      // Directory doesn't exist or can't be accessed
     }
 
     // Decrypt the file
-    const success = await this.decryptFile(cryptFile, outputFile);
+    const success = await this.decryptFile(cryptInfo.path, outputFile);
+
+    if (success) {
+      // Create a symlink to msgstore.db for compatibility
+      const symlinkPath = path.join(this.outputDir, 'msgstore.db');
+      try {
+        await fs.unlink(symlinkPath);
+      } catch {}
+      try {
+        await fs.symlink(path.basename(outputFile), symlinkPath);
+        console.log(`\n📎 Created symlink: msgstore.db → ${path.basename(outputFile)}`);
+      } catch {
+        // Symlink creation failed (might be on Windows), no problem
+      }
+    }
 
     // Summary
     console.log('\n================================\n');
     if (success) {
       console.log(`✅ Decryption complete!`);
-      console.log(`📁 Output: ${outputFile}\n`);
-      console.log('💡 msgstore.db is now available for chat analysis.\n');
+      console.log(`📁 Output: ${outputFile}`);
+      console.log(`📅 Database date: ${cryptInfo.date}\n`);
+      console.log('💡 Database is now available for chat analysis.\n');
       return true;
     } else {
       console.error(`❌ Failed to decrypt the backup.\n`);
