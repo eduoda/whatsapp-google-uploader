@@ -606,9 +606,14 @@ export class CLIApplication {
           const file = filesToUpload[i]!;
           const progress = Math.round(((i + 1) / filesToUpload.length) * 100);
 
+          // Determine destination based on file type
+          const isPhotoVideo = file.mimeType?.startsWith('image/') || file.mimeType?.startsWith('video/') ||
+                               file.mediaType === 'photo' || file.mediaType === 'video';
+          const destination = isPhotoVideo ? '📷 Google Photos' : '📁 Google Drive';
+
           console.log(`[${i + 1}/${filesToUpload.length}] Uploading: ${file.fileName}`);
           console.log(`   Size: ${(file.actualSize! / 1024 / 1024).toFixed(1)} MB | Progress: ${progress}%`);
-          console.log(`   Date: ${file.messageTimestamp.toLocaleDateString()}`);
+          console.log(`   Date: ${file.messageTimestamp.toLocaleDateString()} | Destination: ${destination}`);
 
           try {
             // Convert ChatFileInfo to FileUpload format
@@ -678,10 +683,16 @@ export class CLIApplication {
         console.log('🔍 DRY-RUN MODE: Showing files that would be uploaded\n');
 
         existingFiles.forEach((file: ChatFileInfo, index: number) => {
+          // Determine destination based on file type
+          const isPhotoVideo = file.mimeType?.startsWith('image/') || file.mimeType?.startsWith('video/') ||
+                               file.mediaType === 'photo' || file.mediaType === 'video';
+          const destination = isPhotoVideo ? '📷 Google Photos' : '📁 Google Drive';
+
           console.log(`[${index + 1}] ${file.fileName}`);
           console.log(`    Size: ${(file.actualSize! / 1024 / 1024).toFixed(1)} MB`);
           console.log(`    Type: ${file.mediaType}`);
           console.log(`    Date: ${file.messageTimestamp.toLocaleDateString()}`);
+          console.log(`    Destination: ${destination}`);
           console.log(`    Path: ${file.filePath}`);
           console.log();
         });
