@@ -343,3 +343,5 @@ Agent Task Branch → Agent Push Branch → Architect Reviews → Architect Merg
 
 ---
 > Remember: "A test that passes through deception is worse than a test that fails honestly."
+- MUST FOLLOW KISS, YAGNI, DRY
+- TEST LEGITIMATELY, NO WORKAROUNDS. Never modify tests to pass. Fix root causes only (see INTEGRITY-RULES.md)

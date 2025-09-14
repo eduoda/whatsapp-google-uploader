@@ -132,3 +132,4 @@ mock-whatsapp/
 # Optional eslint cache
 .eslintcache
 client_secret*.json
+tokens/

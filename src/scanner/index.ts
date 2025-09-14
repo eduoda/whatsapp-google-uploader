@@ -33,18 +33,33 @@ const FILE_EXTENSIONS = {
   document: ['.pdf', '.doc', '.docx', '.txt', '.ppt', '.pptx', '.xls', '.xlsx']
 };
 
-const WHATSAPP_DIRS = ['WhatsApp Images', 'WhatsApp Video', 'WhatsApp Documents', 'WhatsApp Audio', 'WhatsApp Voice Notes'];
+// AIDEV-NOTE: whatsapp-media-dirs; complete list of WhatsApp Media subdirectories
+const WHATSAPP_DIRS = [
+  'WhatsApp Images',
+  'WhatsApp Video',
+  'WhatsApp Documents',
+  'WhatsApp Audio',
+  'WhatsApp Voice Notes',
+  'WhatsApp Animated Gifs',
+  'WhatsApp Video Notes',
+  'WhatsApp Stickers',
+  'WhatsApp Profile Photos',
+  'AI Media',
+  'WhatsApp AI Media',
+  'WallPaper'
+  // Excluding: 'WhatsApp Backup Excluded Stickers', 'WhatsApp Bug Report Attachments', 'WhatsApp Sticker Packs'
+];
 
 export class WhatsAppScanner {
   private config: ScannerConfig;
-  private whatsappPath: string;
+  public whatsappPath: string;
 
   constructor(config: ScannerConfig = {}) {
     this.config = {
       maxFileSize: config.maxFileSize || 2 * 1024 * 1024 * 1024, // 2GB default
       whatsappPath: config.whatsappPath
     };
-    this.whatsappPath = '';
+    this.whatsappPath = config.whatsappPath || '';
   }
 
   /**
@@ -52,10 +67,12 @@ export class WhatsAppScanner {
    * AIDEV-NOTE: simple-scan; straightforward directory traversal
    */
   async findFiles(): Promise<FileInfo[]> {
-    // Get WhatsApp path
-    this.whatsappPath = this.config.whatsappPath || await WhatsAppScanner.detectWhatsAppPath() || '';
+    // Get WhatsApp path if not already set
     if (!this.whatsappPath) {
-      throw new Error('WhatsApp directory not found');
+      this.whatsappPath = this.config.whatsappPath || await WhatsAppScanner.detectWhatsAppPath() || '';
+      if (!this.whatsappPath) {
+        throw new Error('WhatsApp directory not found');
+      }
     }
 
     const files: FileInfo[] = [];
@@ -72,6 +89,53 @@ export class WhatsAppScanner {
     }
 
     return files;
+  }
+
+  /**
+   * Scan a specific directory (for compatibility)
+   * AIDEV-NOTE: scan-method; added for API compatibility
+   */
+  async scan(directory?: string): Promise<FileInfo[]> {
+    if (directory) {
+      // Check if directory exists
+      try {
+        const stat = await fs.stat(directory);
+        if (!stat.isDirectory()) {
+          throw new Error(`Not a directory: ${directory}`);
+        }
+      } catch (error: any) {
+        if (error.code === 'ENOENT') {
+          throw new Error(`WhatsApp directory not found: ${directory}`);
+        }
+        throw error;
+      }
+
+      // Temporarily set the path to scan specific directory
+      const originalPath = this.whatsappPath;
+      this.whatsappPath = directory;
+      const files = await this.findFiles();
+      this.whatsappPath = originalPath;
+      return files;
+    }
+    return this.findFiles();
+  }
+
+  /**
+   * Scan all files (alias for findFiles for compatibility)
+   */
+  async scanAll(): Promise<FileInfo[]> {
+    return this.findFiles();
+  }
+
+  /**
+   * Detect WhatsApp path (instance method for compatibility)
+   */
+  async detectWhatsAppPath(): Promise<string | null> {
+    const detected = await WhatsAppScanner.detectWhatsAppPath();
+    if (detected) {
+      this.whatsappPath = detected;
+    }
+    return detected;
   }
 
   /**
@@ -210,3 +274,6 @@ export class WhatsAppScanner {
     return mimeTypes.lookup(filePath) || 'application/octet-stream';
   }
 }
+
+// AIDEV-NOTE: scanner-exports; export Scanner alias for backward compatibility
+export { WhatsAppScanner as Scanner };

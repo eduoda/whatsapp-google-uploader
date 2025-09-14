@@ -12,7 +12,9 @@
     "setup:termux": "bash scripts/setup-termux.sh",
     "clean": "rimraf dist",
     "scan": "node dist/cli.js scan",
-    "upload": "node dist/cli.js upload"
+    "upload": "node dist/cli.js upload",
+    "test": "npm run build && node tests/test.js --dry-run",
+    "test:live": "npm run build && node tests/test.js"
   },
   "keywords": [
     "whatsapp",
@@ -39,6 +41,7 @@
   },
   "homepage": "https://github.com/user/whatsapp-google-uploader#readme",
   "dependencies": {
+    "axios": "^1.12.1",
     "commander": "^14.0.1",
     "dotenv": "^17.2.2",
     "google-auth-library": "^9.0.0",

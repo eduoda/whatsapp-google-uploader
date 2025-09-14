@@ -4,6 +4,3 @@
  */
 
 export { CLIApplication } from './cli-application';
-export { CommandRegistry } from './commands/command-registry';
-export { ConfigManager } from './config/config-manager';
-export { Logger } from './utils/logger';

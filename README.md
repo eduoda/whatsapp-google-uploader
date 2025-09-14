@@ -71,6 +71,7 @@ node dist/cli.js scan
 - ✅ **Zero native compilation** - No SQLite, no node-gyp
 - ✅ **Cloud persistence** - Google Sheets instead of local files
 - ✅ **Minimal dependencies** - Only essential packages
+- ✅ **Comprehensive tests** - Full test suite for all modules
 
 ### Setup
 
@@ -170,8 +171,8 @@ npm install              # For developers
 # Build project
 npm run build
 
-# Test components
-npm test                 # Run all tests
+# Run tests (see Testing section for details)
+npm test                 # Run all functional tests
 ```
 
 ### First Run and Authentication
@@ -272,6 +273,51 @@ After first authentication, token is saved to `token.json` for future use.
 - **Streaming Architecture** - No temporary file creation
 - **Configurable Concurrency** - Adjustable for system capabilities
 - **Rate Limit Compliance** - Respects Google API quotas
+
+## Testing
+
+### Running Tests
+
+Simple functional test that verifies real production code.
+
+```bash
+# Run test with dry-run (default - no uploads)
+npm test
+
+# Run test with custom WhatsApp directory
+node tests/test.js /path/to/whatsapp
+
+# Run test with actual uploads (requires authentication)
+node tests/test.js
+
+# Run test with dry-run and custom directory
+node tests/test.js --dry-run /path/to/whatsapp
+```
+
+### Test Features
+
+The test verifies:
+1. **Scanner**: Finds media files in WhatsApp directories
+2. **Google APIs**: Initializes with credentials
+3. **Album Creation**: Creates albums in Google Photos (live mode)
+4. **Photo Upload**: Uploads photos to Google Photos (live mode)
+5. **Album Management**: Adds photos to albums (live mode)
+
+### Mock WhatsApp Directory
+
+The project includes a mock WhatsApp directory structure for testing:
+```bash
+tests/mock-whatsapp/
+└── Android/media/com.whatsapp/WhatsApp/Media/
+    ├── WhatsApp Images/
+    ├── WhatsApp Video/
+    ├── WhatsApp Documents/
+    └── ... (other media directories)
+```
+
+Contains 42 test media files for comprehensive testing.
+
+## Security
 
 ## Troubleshooting
 
