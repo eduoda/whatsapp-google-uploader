@@ -5,6 +5,7 @@
 
 import { google, sheets_v4 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
+import { ChatMetadata, PORTUGUESE_COLUMN_LABELS } from '../chat-metadata/types.js';
 
 export interface FileRecord {
   fileHash: string;
@@ -30,11 +31,16 @@ export interface ProgressRecord {
 export class SheetsDatabase {
   private sheets: sheets_v4.Sheets;
   private spreadsheetId: string | null = null;
+  private chatMetadataSpreadsheetId: string | null = null;
   private initialized = false;
-  
+
   private readonly SPREADSHEET_NAME = 'WhatsApp-Uploader-Database';
   private readonly UPLOADED_FILES_SHEET = 'uploaded_files';
   private readonly PROGRESS_SHEET = 'upload_progress';
+
+  // AIDEV-NOTE: Chat metadata will be stored in separate spreadsheet as requested
+  private readonly CHAT_METADATA_SPREADSHEET_NAME = 'chats';
+  private readonly CHAT_METADATA_SHEET = 'chats';
 
   constructor(private auth: OAuth2Client) {
     this.sheets = google.sheets({ version: 'v4', auth });
@@ -386,6 +392,213 @@ export class SheetsDatabase {
   getSpreadsheetUrl(): string | null {
     if (!this.spreadsheetId) return null;
     return `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/edit`;
+  }
+
+  // AIDEV-NOTE: Chat metadata Google Sheets integration methods (TASK-023)
+
+  /**
+   * Create or find chat metadata spreadsheet in Google Drive
+   * Creates spreadsheet at path: /WhatsApp Google Uploader/chats
+   */
+  async createChatMetadataSheet(): Promise<string> {
+    const drive = google.drive({ version: 'v3', auth: this.auth });
+
+    // AIDEV-NOTE: First, find or create the "WhatsApp Google Uploader" folder
+    const parentFolderResponse = await drive.files.list({
+      q: `name='WhatsApp Google Uploader' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name)'
+    });
+
+    let parentFolderId: string;
+    if (parentFolderResponse.data.files && parentFolderResponse.data.files.length > 0) {
+      const firstFolder = parentFolderResponse.data.files[0];
+      if (firstFolder?.id) {
+        parentFolderId = firstFolder.id;
+      } else {
+        throw new Error('Found folder but no ID available');
+      }
+    } else {
+      // Create the parent folder
+      const folderResponse = await drive.files.create({
+        requestBody: {
+          name: 'WhatsApp Google Uploader',
+          mimeType: 'application/vnd.google-apps.folder'
+        }
+      });
+      if (!folderResponse.data.id) {
+        throw new Error('Failed to create parent folder - no ID returned');
+      }
+      parentFolderId = folderResponse.data.id;
+    }
+
+    // AIDEV-NOTE: Search for existing chat metadata spreadsheet
+    const searchResponse = await drive.files.list({
+      q: `name='${this.CHAT_METADATA_SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and '${parentFolderId}' in parents and trashed=false`,
+      fields: 'files(id, name)'
+    });
+
+    if (searchResponse.data.files && searchResponse.data.files.length > 0) {
+      const existingFile = searchResponse.data.files[0];
+      if (existingFile?.id) {
+        this.chatMetadataSpreadsheetId = existingFile.id;
+        return existingFile.id;
+      }
+    }
+
+    // AIDEV-NOTE: Create new chat metadata spreadsheet with Portuguese headers
+    const createResponse = await this.sheets.spreadsheets.create({
+      requestBody: {
+        properties: {
+          title: this.CHAT_METADATA_SPREADSHEET_NAME
+        },
+        sheets: [{
+          properties: {
+            title: this.CHAT_METADATA_SHEET,
+            gridProperties: { rowCount: 1000, columnCount: 14 }
+          }
+        }]
+      }
+    });
+
+    if (!createResponse.data.spreadsheetId) {
+      throw new Error('Failed to create chat metadata spreadsheet - no ID returned');
+    }
+    const newSpreadsheetId = createResponse.data.spreadsheetId;
+    this.chatMetadataSpreadsheetId = newSpreadsheetId;
+
+    // AIDEV-NOTE: Move to the correct folder
+    await drive.files.update({
+      fileId: newSpreadsheetId,
+      addParents: parentFolderId
+    });
+
+    // AIDEV-NOTE: Initialize with Portuguese column headers
+    await this.initializeChatMetadataHeaders(newSpreadsheetId);
+
+    return newSpreadsheetId;
+  }
+
+  /**
+   * Initialize chat metadata sheet with Portuguese column headers
+   */
+  private async initializeChatMetadataHeaders(spreadsheetId: string): Promise<void> {
+    // AIDEV-NOTE: Portuguese column labels as specified in requirements
+    const headers = [
+      PORTUGUESE_COLUMN_LABELS.chatName,
+      PORTUGUESE_COLUMN_LABELS.chatJid,
+      PORTUGUESE_COLUMN_LABELS.chatType,
+      PORTUGUESE_COLUMN_LABELS.msgstoreDate,
+      PORTUGUESE_COLUMN_LABELS.lastSyncDate,
+      PORTUGUESE_COLUMN_LABELS.lastUploadedFile,
+      PORTUGUESE_COLUMN_LABELS.syncedFilesCount,
+      PORTUGUESE_COLUMN_LABELS.failedUploadsCount,
+      PORTUGUESE_COLUMN_LABELS.photosAlbumName,
+      PORTUGUESE_COLUMN_LABELS.photosAlbumLink,
+      PORTUGUESE_COLUMN_LABELS.driveDirectoryName,
+      PORTUGUESE_COLUMN_LABELS.driveDirectoryLink,
+      PORTUGUESE_COLUMN_LABELS.syncEnabled,
+      PORTUGUESE_COLUMN_LABELS.maxMediaAgeDays
+    ];
+
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${this.CHAT_METADATA_SHEET}!A1:N1`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [headers]
+      }
+    });
+
+    // AIDEV-NOTE: Format header row for better readability
+    await this.sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{
+          repeatCell: {
+            range: {
+              sheetId: 0, // First sheet
+              startRowIndex: 0,
+              endRowIndex: 1,
+              startColumnIndex: 0,
+              endColumnIndex: 14
+            },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { bold: true },
+                backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 }
+              }
+            },
+            fields: 'userEnteredFormat(textFormat,backgroundColor)'
+          }
+        }]
+      }
+    });
+  }
+
+  /**
+   * Save chat metadata to Google Sheets
+   */
+  async saveChatMetadata(chatMetadata: ChatMetadata[]): Promise<void> {
+    if (chatMetadata.length === 0) {
+      console.log('ℹ️  No chat metadata to save');
+      return;
+    }
+
+    // AIDEV-NOTE: Ensure chat metadata spreadsheet exists
+    if (!this.chatMetadataSpreadsheetId) {
+      await this.createChatMetadataSheet();
+    }
+
+    // AIDEV-NOTE: Clear existing data (except headers) and insert new data
+    await this.sheets.spreadsheets.values.clear({
+      spreadsheetId: this.chatMetadataSpreadsheetId!,
+      range: `${this.CHAT_METADATA_SHEET}!A2:N`
+    });
+
+    // AIDEV-NOTE: Convert chat metadata to sheet rows
+    const rows = chatMetadata.map(chat => [
+      chat.chatName,
+      chat.chatJid,
+      chat.chatType,
+      chat.msgstoreDate.toISOString().split('T')[0], // Date only
+      chat.lastSyncDate ? chat.lastSyncDate.toISOString().split('T')[0] : '',
+      chat.lastUploadedFile || '',
+      chat.syncedFilesCount,
+      chat.failedUploadsCount,
+      chat.photosAlbumName || '',
+      chat.photosAlbumLink || '',
+      chat.driveDirectoryName || '',
+      chat.driveDirectoryLink || '',
+      chat.syncEnabled,
+      chat.maxMediaAgeDays
+    ]);
+
+    await this.sheets.spreadsheets.values.append({
+      spreadsheetId: this.chatMetadataSpreadsheetId!,
+      range: `${this.CHAT_METADATA_SHEET}!A2:N`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: rows
+      }
+    });
+
+    console.log(`✓ Saved metadata for ${chatMetadata.length} chats to Google Sheets`);
+  }
+
+  /**
+   * Get chat metadata spreadsheet URL for viewing
+   */
+  getChatMetadataSpreadsheetUrl(): string | null {
+    if (!this.chatMetadataSpreadsheetId) return null;
+    return `https://docs.google.com/spreadsheets/d/${this.chatMetadataSpreadsheetId}/edit`;
+  }
+
+  /**
+   * Initialize chat metadata functionality (separate from main database)
+   */
+  async initializeChatMetadata(): Promise<void> {
+    await this.createChatMetadataSheet();
   }
 }
 

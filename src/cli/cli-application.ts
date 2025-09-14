@@ -316,14 +316,17 @@ export class CLIApplication {
         }
       });
 
-    // Scan command - AIDEV-NOTE: scan-command; integrates existing Scanner with CLI
+    // Scan command - AIDEV-NOTE: scan-command; integrates Scanner with Chat Metadata (TASK-023)
     this.program
       .command('scan')
-      .description('Scan WhatsApp directory for media files')
+      .description('Scan WhatsApp directory for media files and save chat metadata to Google Sheets')
       .argument('[path]', 'Custom WhatsApp path (optional)')
-      .action(async (customPath) => {
+      .option('--dry-run', 'Preview mode - skip Google Sheets saving')
+      .action(async (customPath, options) => {
         try {
           const { WhatsAppScanner } = require('../scanner');
+          const { ChatMetadataExtractor } = require('../chat-metadata');
+          const isDryRun = options.dryRun;
 
           console.log('Scanning WhatsApp media files...\n');
 
@@ -378,6 +381,60 @@ export class CLIApplication {
           const totalSize = files.reduce((sum: number, f: FileInfo) => sum + f.size, 0);
           const totalCount = files.length;
           console.log(`Total: ${totalCount} files, ${(totalSize / 1024 / 1024).toFixed(1)} MB`);
+
+          // AIDEV-NOTE: Chat metadata extraction and Google Sheets integration (TASK-023)
+          if (!isDryRun) {
+            console.log('\n📊 Extracting chat metadata...');
+
+            try {
+              // Extract chat metadata from msgstore.db
+              const chatExtractor = new ChatMetadataExtractor();
+              const chatMetadata = await chatExtractor.extractChatMetadata();
+
+              if (chatMetadata.length > 0) {
+                console.log('\n☁️  Saving to Google Sheets...');
+
+                // Initialize Google APIs and SheetsDatabase
+                const { GoogleApis } = require('../google-apis');
+                const { SheetsDatabase } = require('../database');
+
+                const googleApis = new GoogleApis({
+                  credentialsPath: './credentials.json',
+                  tokenPath: './tokens/google-tokens.json'
+                });
+
+                await googleApis.initialize();
+
+                if (!googleApis.isAuthenticated()) {
+                  console.log('⚠️  Authentication required for Google Sheets saving.');
+                  console.log('   Run "whatsapp-uploader auth" first, or use --dry-run flag to skip.');
+                  return;
+                }
+
+                // Create sheets database and save chat metadata
+                const sheetsDb = new SheetsDatabase(googleApis.auth);
+                await sheetsDb.initializeChatMetadata();
+                await sheetsDb.saveChatMetadata(chatMetadata);
+
+                // Display success message with spreadsheet link
+                const spreadsheetUrl = sheetsDb.getChatMetadataSpreadsheetUrl();
+                console.log('\n✓ Chat metadata saved to Google Sheets!');
+                if (spreadsheetUrl) {
+                  console.log(`📋 View at: ${spreadsheetUrl}`);
+                }
+              } else {
+                console.log('\nℹ️  No chat metadata found (msgstore.db unavailable or empty)');
+                console.log('   To extract chat metadata: run "npm run decrypt" first');
+              }
+
+            } catch (chatError) {
+              console.warn('\n⚠️  Chat metadata extraction failed:', (chatError as Error).message);
+              console.log('   File scan completed successfully. Chat metadata can be added later.');
+            }
+          } else {
+            console.log('\n🔍 Dry-run mode: Skipping Google Sheets operations');
+            console.log('   Remove --dry-run flag to save chat metadata to Google Sheets');
+          }
 
         } catch (error) {
           console.error('Scan failed:', (error as Error).message);
