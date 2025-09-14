@@ -306,16 +306,39 @@ The test verifies:
 ### Mock WhatsApp Directory
 
 The project includes a mock WhatsApp directory structure for testing:
+
 ```bash
-tests/mock-whatsapp/
-└── Android/media/com.whatsapp/WhatsApp/Media/
-    ├── WhatsApp Images/
-    ├── WhatsApp Video/
-    ├── WhatsApp Documents/
-    └── ... (other media directories)
+# Create mock directory structure only
+./tests/mock-whatsapp/setup.sh
+
+# Create structure and populate with sample files
+./tests/mock-whatsapp/setup.sh --populate
 ```
 
-Contains 42 test media files for comprehensive testing.
+The mock structure replicates Android 12+ WhatsApp layout:
+```
+tests/mock-whatsapp/
+└── Android/media/com.whatsapp/WhatsApp/
+    ├── Media/
+    │   ├── WhatsApp Images/      # Photos (.jpg, .png)
+    │   ├── WhatsApp Video/        # Videos (.mp4)
+    │   ├── WhatsApp Documents/    # Documents (.pdf, .txt)
+    │   ├── WhatsApp Audio/        # Audio messages (.mp3)
+    │   ├── WhatsApp Voice Notes/  # Voice notes (.opus)
+    │   ├── WhatsApp Animated Gifs/# GIFs (.gif)
+    │   ├── WhatsApp Stickers/     # Stickers (.webp)
+    │   └── .Statuses/             # Status updates
+    ├── Databases/                 # Encrypted backups (.crypt14)
+    └── Profile Pictures/          # Contact photos
+
+Each media folder includes Sent/ and Private/ subdirectories for complete coverage.
+```
+
+To test with the mock structure:
+```bash
+# Run test with mock WhatsApp directory
+node tests/test.js tests/mock-whatsapp
+```
 
 ## Security
 
