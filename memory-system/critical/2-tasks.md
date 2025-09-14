@@ -214,6 +214,60 @@
 - Completed: 2025-09-12 18:30
 - Report: TASK-009-seer-report.md
 
+## [✅] architect - TASK-019 - Scanner Enhancement Feasibility Analysis **COMPLETED**
+- Priority: 1 (High - User Request Analysis)
+- Description: Analyze technical feasibility of user requirements for chat-based scanner functionality, identify constraints, and propose realistic alternatives
+- Started: 2025-09-14 09:30
+- Branch: TASK-019-architect
+- Conflicts: None
+- Planning: TASK-019-architect-planning.md
+- Completed: 2025-09-14 11:45
+- Report: TASK-019-architect-report.md
+
+## [ ] dwarf - TASK-020 - WhatsApp Database Decryption Implementation (Phase 1)
+- Priority: 1 (Critical - Core Feature)
+- Description: Implement `npm run decrypt` command using wa-crypt-tools Python library for decrypting .crypt15 files
+- Depends on: Python wa-crypt-tools installation
+- Phase: Phase 1 - Decryption Infrastructure
+- **Acceptance Criteria**:
+  - [ ] `npm run decrypt` command works
+  - [ ] Reads WHATSAPP_BACKUP_KEY from .env file
+  - [ ] Executes wa-crypt-tools with proper parameters
+  - [ ] Decrypts .crypt15 files to .db files
+  - [ ] Validates backup key format (64 hex characters)
+  - [ ] Provides clear error messages for common issues
+  - [ ] Follows KISS/YAGNI principles - minimal implementation
+  - [ ] Handles multiple crypt files in directory
+  - [ ] Creates 'decrypted/' subdirectory for output
+
+## [ ] dwarf - TASK-021 - WhatsApp Database Chat Scanner Enhancement (Phase 2)
+- Priority: 2 (High - Core Feature)
+- Description: Enhance existing scanner to read chat information from decrypted msgstore.db
+- Depends on: TASK-020 (Decryption working)
+- Phase: Phase 2 - Chat-Aware Scanning
+- **Acceptance Criteria**:
+  - [ ] Scan command shows chat/group information when available
+  - [ ] Associates media files with specific chats/groups
+  - [ ] Lists available chats with media counts
+  - [ ] Supports --chat option to filter by specific chat
+  - [ ] Maintains backward compatibility with existing scan functionality
+  - [ ] Uses SQLite to read msgstore.db tables (messages, message_media, chat, jid)
+  - [ ] Maps media file names to chat via message_media → key_remote_jid → chat
+  - [ ] Handles cases where msgstore.db is not available gracefully
+
+## [ ] api - TASK-022 - Chat-Specific Upload Enhancement (Phase 3)
+- Priority: 3 (Medium - Enhanced Feature)
+- Description: Enhance upload command to support chat-specific uploads using decrypted database information
+- Depends on: TASK-021 (Chat scanner working)
+- Phase: Phase 3 - Chat-Specific Operations
+- **Acceptance Criteria**:
+  - [ ] Upload command accepts --chat-id parameter
+  - [ ] Creates separate Google Photos albums for different chats
+  - [ ] Organizes uploads by chat name/group name
+  - [ ] Maintains existing functionality when no chat specified
+  - [ ] Provides chat selection interface when multiple chats detected
+  - [ ] Updates progress tracking to include chat context
+
 ---
 
 ## NEW MINIMAL TASK LIST (Post-Refactoring MVP)

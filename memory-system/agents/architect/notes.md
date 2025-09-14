@@ -302,3 +302,96 @@ This merge represents a major milestone in project simplification. The dwarf age
 
 ---
 
+### 2025-09-14 - WhatsApp Database Decryption Architecture Design
+
+**Project**: WhatsApp Google Uploader - Chat-Aware Functionality Extension
+
+**User Requirements Analysis**:
+- **Primary Goal**: Enable chat-specific media organization and uploads
+- **Key Challenge**: WhatsApp .crypt15 backup files are encrypted
+- **Data Source**: Decrypted msgstore.db contains chat/group associations
+- **Technical Constraint**: Requires Python wa-crypt-tools and 64-hex backup key
+
+**Three-Phase Architecture Design**:
+
+#### Phase 1: Decryption Infrastructure (TASK-020)
+- **Component**: DecryptCommand, CryptDecryptor, BackupKeyValidator
+- **Technical Approach**: Python subprocess integration with wa-crypt-tools
+- **Output**: Decrypted msgstore.db files in organized directory structure
+- **Security**: Environment variable key management, no logging of sensitive data
+
+#### Phase 2: Chat-Aware Scanner Enhancement (TASK-021)
+- **Component**: Enhanced WhatsAppScanner with ChatReader, ChatMapper
+- **Technical Approach**: SQLite direct queries on msgstore.db tables
+- **Key Innovation**: File-to-chat association via message_media → messages → chat joins
+- **Backward Compatibility**: Graceful fallback when msgstore.db unavailable
+
+#### Phase 3: Chat-Specific Upload Enhancement (TASK-022)
+- **Component**: Enhanced UploaderManager with AlbumManager, ChatSelector
+- **Technical Approach**: Google Photos album per chat, interactive selection
+- **User Experience**: Intuitive CLI with --chat, --select-chat, --all-chats options
+- **Organization**: "WhatsApp - [Chat Name]" album naming convention
+
+**Key Architectural Decisions Made**:
+
+#### ADR-001: Python Integration for Decryption
+- **Context**: wa-crypt-tools is mature, maintained Python library for WhatsApp decryption
+- **Decision**: Use subprocess execution rather than native JavaScript implementation
+- **Trade-offs**:
+  - ✅ Leverages proven cryptographic implementation
+  - ✅ No complex reverse-engineering of WhatsApp encryption
+  - ❌ Requires Python environment dependency
+
+#### ADR-002: SQLite Direct Access Pattern
+- **Context**: msgstore.db contains chat associations in well-known schema
+- **Decision**: Use better-sqlite3 with direct SQL queries, no ORM
+- **Trade-offs**:
+  - ✅ Lightweight, minimal overhead for read-only operations
+  - ✅ Full query control for performance optimization
+  - ❌ Requires SQL knowledge for maintenance
+
+#### ADR-003: Phased Implementation Strategy
+- **Context**: Complex feature with multiple interdependent components
+- **Decision**: Sequential phases with validation gates between each
+- **Trade-offs**:
+  - ✅ Risk mitigation through incremental delivery
+  - ✅ Testing and debugging at each stage
+  - ✅ User value delivery in stages
+  - ❌ Longer total development time
+
+**Technical Implementation Specifications**:
+- **Environment**: WHATSAPP_BACKUP_KEY (64-hex) via .env file
+- **Dependencies**: wa-crypt-tools (Python), better-sqlite3 (Node.js), inquirer (CLI)
+- **File Structure**: Dedicated src/decryption/, enhanced src/scanner/, src/google-apis/album-manager.ts
+- **Database Schema**: Leverages existing WhatsApp tables (messages, message_media, chat, jid)
+
+**Quality Assurance Strategy**:
+- **INTEGRITY COMPLIANCE**: All tests use production code paths, no workarounds
+- **KISS Principle**: Minimal implementations, no over-engineering
+- **Error Handling**: Clear error messages with user-friendly suggestions
+- **Security**: Backup key protection, no sensitive data logging
+
+**Risk Assessment and Mitigation**:
+- **High Risk**: Python dependency → Clear installation docs, environment validation
+- **Medium Risk**: Database schema changes → Support multiple WhatsApp versions
+- **Low Risk**: Cross-platform → Focus on primary Termux/Android target
+
+**Success Criteria Defined**:
+1. **TASK-020**: `npm run decrypt` successfully processes real .crypt15 files
+2. **TASK-021**: Enhanced scanner correctly associates media files with chats
+3. **TASK-022**: Chat-specific uploads create organized Google Photos albums
+
+**Strategic Value**:
+- **User Experience**: Transforms generic backup into organized, searchable chat collections
+- **Technical Foundation**: Establishes pattern for future WhatsApp database features
+- **Architecture Maturity**: Demonstrates complex requirement decomposition and phased delivery
+
+**Next Actions Required**:
+1. **User approval** on three-phase architecture plan
+2. **Environment setup** documentation for Python wa-crypt-tools
+3. **Task assignment** to agents: TASK-020 → dwarf, TASK-021 → dwarf, TASK-022 → api
+
+**Key Learning**: Successfully decomposed complex user requirement into testable, sequential implementation phases while maintaining system integrity and following established principles.
+
+---
+

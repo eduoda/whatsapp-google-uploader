@@ -89,6 +89,9 @@ node dist/cli.js check
 # Scan WhatsApp media files
 node dist/cli.js scan                    # Scan default WhatsApp location
 node dist/cli.js scan /path/to/whatsapp  # Scan custom path
+
+# Decrypt WhatsApp database (NEW - requires wa-crypt-tools)
+npm run decrypt                           # Decrypt .crypt15 files to access chat data
 ```
 
 ### Planned Commands (Not Yet Implemented)
@@ -179,6 +182,23 @@ node dist/cli.js scan /path/to/WhatsApp
 #   ... and 5 more
 #
 # Total: 26 files, 61.0 MB
+```
+
+### Decrypting WhatsApp Databases (Optional)
+
+For advanced features like chat-specific uploads, you can decrypt WhatsApp databases:
+
+#### Prerequisites:
+1. Install wa-crypt-tools: `pip install wa-crypt-tools`
+2. Get your 64-character backup key from WhatsApp:
+   - Settings → Chats → Chat Backup → End-to-end encrypted backup
+3. Add key to .env: `WHATSAPP_BACKUP_KEY=your-64-character-hex-key`
+
+#### Usage:
+```bash
+npm run decrypt
+# Decrypts .crypt15 files → decrypted/msgstore.db
+# Enables future chat-aware features
 ```
 
 ### Development Commands
