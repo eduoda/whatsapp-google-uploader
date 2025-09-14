@@ -243,33 +243,83 @@
   - [✓] Handles multiple crypt files in directory
   - [✓] Creates 'decrypted/' subdirectory for output
 
-## [ ] dwarf - TASK-021 - WhatsApp Database Chat Scanner Enhancement (Phase 2)
+## [❌] dwarf - TASK-021 - WhatsApp Database Chat Scanner Enhancement (Phase 2) **OBSOLETE**
 - Priority: 2 (High - Core Feature)
-- Description: Enhance existing scanner to read chat information from decrypted msgstore.db
+- Description: ~~Enhance existing scanner to read chat information from decrypted msgstore.db~~
 - Depends on: TASK-020 (Decryption working)
 - Phase: Phase 2 - Chat-Aware Scanning
-- **Acceptance Criteria**:
-  - [ ] Scan command shows chat/group information when available
-  - [ ] Associates media files with specific chats/groups
-  - [ ] Lists available chats with media counts
-  - [ ] Supports --chat option to filter by specific chat
-  - [ ] Maintains backward compatibility with existing scan functionality
-  - [ ] Uses SQLite to read msgstore.db tables (messages, message_media, chat, jid)
-  - [ ] Maps media file names to chat via message_media → key_remote_jid → chat
-  - [ ] Handles cases where msgstore.db is not available gracefully
+- **OBSOLETE REASON**: Replaced by TASK-023 which directly implements the user's requested feature - Google Sheets integration with chat metadata. TASK-021 was too narrowly focused on scanner enhancement only.
+- **REPLACEMENT**: TASK-023 - Chat Metadata Google Sheets Integration
 
-## [ ] api - TASK-022 - Chat-Specific Upload Enhancement (Phase 3)
+## [❌] api - TASK-022 - Chat-Specific Upload Enhancement (Phase 3) **OBSOLETE**
 - Priority: 3 (Medium - Enhanced Feature)
-- Description: Enhance upload command to support chat-specific uploads using decrypted database information
+- Description: ~~Enhance upload command to support chat-specific uploads using decrypted database information~~
 - Depends on: TASK-021 (Chat scanner working)
 - Phase: Phase 3 - Chat-Specific Operations
+- **OBSOLETE REASON**: Following YAGNI principle - user's immediate need is for Google Sheets chat data tracking, not chat-specific uploads. Can be implemented later if needed.
+- **REPLACEMENT**: None - deferred as per YAGNI
+
+---
+
+## NEW USER REQUEST (Per-Chat Scanner - 2025-09-14)
+
+## [✓] dwarf - TASK-024 - Per-Chat Media File Analyzer **COMPLETED**
+- Priority: 1 (Critical - User Request)
+- Description: Implement chat-specific media file analysis from msgstore.db messages table for given JID
+- Depends on: TASK-023 (chat metadata working ✅), better-sqlite3 ✅
+- Phase: Per-Chat File Analysis
+- Assigned: 2025-09-14 (current session)
+- Specification: TASK-024-dwarf-spec.md
+- Started: 2025-09-14 18:45
+- Branch: TASK-024-dwarf (pushed)
+- Conflicts: None
+- Completed: 2025-09-14 20:15
+- Report: TASK-024-dwarf-report.md
+- **Acceptance Criteria** ✅ ALL COMPLETED:
+  - [✅] Extract media files for specific chat JID from messages table
+  - [✅] Read message.data (JSON blob) to get media file information (N/A - WhatsApp uses message_media table)
+  - [✅] Match file names to actual WhatsApp media files on filesystem
+  - [✅] Return structured data with file info, message timestamps, senders
+  - [✅] Handle different media types (photo, video, document, audio)
+  - [✅] KISS: Focus on file listing, not complex message parsing
+
+## [✓] dwarf - TASK-025 - Per-Chat Google Sheets Integration **COMPLETED**
+- Priority: 1 (Critical - User Request)
+- Description: Create per-chat Google Sheets with media file listings and upload tracking columns
+- Depends on: TASK-024 (chat file analyzer ✅)
+- Phase: Per-Chat Sheets Creation
+- Assigned: 2025-09-14 (current session)
+- Specification: TASK-025-dwarf-spec.md
+- Started: 2025-09-14 20:45
+- Worktree: TASK-025-dwarf
+- Branch: TASK-025-dwarf
+- Conflicts: None
+- Planning: TASK-025-dwarf-planning.md
+- Completed: 2025-09-14 22:15
+- Report: TASK-025-dwarf-report.md
+- **Acceptance Criteria** ✅ ALL COMPLETED:
+  - [✅] Create sheet at `/WhatsApp Google Uploader/[chat_name]_[JID]`
+  - [✅] Required columns: file ID, name, type, size, message date, sender, upload status, upload date, upload error, etc.
+  - [✅] Upload tracking columns: upload status, upload date, file deleted from phone, error message, attempt count
+  - [✅] Directory/album columns: directory/album name, directory/album link, file/media link
+  - [✅] Use existing SheetsDatabase pattern for consistency
+  - [✅] KISS: Simple sheet structure, no complex formatting
+
+## [ ] dwarf - TASK-026 - CLI `scanchat` Command Implementation **ASSIGNED**
+- Priority: 1 (Critical - User Request)
+- Description: Add `scanchat --chat="JID"` command to CLI that analyzes specific chat and creates/updates its spreadsheet
+- Depends on: TASK-024, TASK-025 (chat analyzer and sheets)
+- Phase: CLI Integration
+- Assigned: 2025-09-14 (current session)
+- Specification: TASK-026-dwarf-spec.md
 - **Acceptance Criteria**:
-  - [ ] Upload command accepts --chat-id parameter
-  - [ ] Creates separate Google Photos albums for different chats
-  - [ ] Organizes uploads by chat name/group name
-  - [ ] Maintains existing functionality when no chat specified
-  - [ ] Provides chat selection interface when multiple chats detected
-  - [ ] Updates progress tracking to include chat context
+  - [ ] `npm run scanchat --chat="JID"` command works
+  - [ ] Accepts chat JID parameter (required)
+  - [ ] Lists all media files found in that chat with metadata
+  - [ ] Creates/updates per-chat Google Sheets automatically
+  - [ ] Shows progress and completion with spreadsheet URL
+  - [ ] Error handling for invalid JID or missing msgstore.db
+  - [ ] KISS: Simple command interface, no complex options
 
 ---
 
@@ -295,20 +345,49 @@
   - [x] Error handling with helpful messages
   - [x] CLI test added and passing
 
-## [ ] api - TASK-017 - Implement CLI `upload` Command
+## [✓] dwarf - TASK-023 - Chat Metadata Google Sheets Integration **COMPLETED**
+- Priority: 1 (Critical - User Request)
+- Description: Enhance existing `scan` command to save WhatsApp chat metadata to Google Sheets BY DEFAULT with optional --dry-run flag
+- Depends on: Working GoogleApis ✅, SheetsDatabase ✅, WhatsAppDecryptor ✅
+- Phase: Chat Metadata Integration
+- Started: 2025-09-14 14:30
+- Worktree: TASK-023-dwarf
+- Branch: TASK-023-dwarf
+- Conflicts: None
+- Planning: TASK-023-dwarf-planning.md
+- Completed: 2025-09-14 17:15
+- Report: TASK-023-dwarf-report.md
+- Orchestrated By: architect (current session)
+- **Acceptance Criteria (ALL COMPLETED ✅)**:
+  - [✅] Add better-sqlite3 dependency for msgstore.db reading
+  - [✅] Create new sheets database for chat metadata at path `/WhatsApp Google Uploader/chats`
+  - [✅] Extract chat data: name, JID, type from msgstore.db
+  - [✅] Create Google Sheets with required columns (see spec below)
+  - [✅] Make Google Sheets saving DEFAULT behavior for `npm run scan` (KISS)
+  - [✅] Add `--dry-run` flag to SKIP Google Sheets saving (for testing/preview)
+  - [✅] Preserve file listing functionality in both modes
+  - [✅] Handle case when msgstore.db not available gracefully
+  - **Required Columns**:
+    - Basic chat data (name, JID, type, etc.)
+    - data do msgstore.db (msgstore.db date)
+    - data da ultima sincronizacao (last sync date)
+    - ultimo arquivo enviado (last uploaded file)
+    - quantidade de arquivos sincronizados (synced files count)
+    - quantidade de arquivos que falharam (failed uploads count)
+    - nome do album do google photos (Photos album name)
+    - link para album do google photos (Photos album link)
+    - nome do diretorio do google drive (Drive directory name)
+    - link para diretorio do google drive (Drive directory link)
+    - flag sincronizacao (sync enabled flag)
+    - idade maxima midia (max media age to keep on phone)
+
+## [❌] api - TASK-017 - Implement CLI `upload` Command **REPLACED**
 - Priority: 2 (High - MVP Essential)
-- Description: Add `upload` command to CLI that executes uploads using existing UploaderManager class
-- Depends on: Working UploaderManager ✅ (already implemented), TASK-016 (scan command)
+- Description: ~~Add `upload` command to CLI that executes uploads using existing UploaderManager class~~
+- Depends on: Working UploaderManager ✅ (already implemented), TASK-016 (scan command), TASK-023 (chat sheets)
 - Phase: MVP CLI Implementation
-- **Acceptance Criteria**:
-  - [ ] `whatsapp-uploader upload` command works
-  - [ ] Authenticates using existing GoogleApis
-  - [ ] Uploads files using existing UploaderManager
-  - [ ] Shows progress with simple progress indicator
-  - [ ] Supports `--chat-id` parameter for organizing uploads
-  - [ ] Uses existing deduplication (skips already uploaded)
-  - [ ] KISS: Basic progress output, no complex UI
-  - [ ] Returns spreadsheet URL after completion
+- **REPLACED REASON**: User changed requirements - wants per-chat scanning with `scanchat --chat="JID"` command instead of general upload
+- **REPLACEMENT**: TASK-024, TASK-025, TASK-026 (per-chat scanner implementation)
 
 ## [ ] seer - TASK-018 - Update Tests for CLI Commands
 - Priority: 3 (Medium - Quality Assurance)

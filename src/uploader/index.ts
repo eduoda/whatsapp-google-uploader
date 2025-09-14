@@ -47,7 +47,7 @@ export class UploaderManager {
     
     // Get the OAuth client from GoogleApis to use with SheetsDatabase
     // AIDEV-NOTE: auth-sharing; GoogleApis handles all authentication, sharing with database
-    const authClient = (this.googleApis as any).auth; // Access private auth property
+    const authClient = this.googleApis.authClient; // Use proper getter method
     this.db = new SheetsDatabase(authClient);
     await this.db.initialize();
   }

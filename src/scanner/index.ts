@@ -185,10 +185,20 @@ export class WhatsAppScanner {
    * AIDEV-NOTE: platform-detection; simplified path detection
    */
   static async detectWhatsAppPath(): Promise<string | null> {
+    // AIDEV-NOTE: env-priority; check WHATSAPP_PATH env var first (TASK-023 fix)
+    if (process.env.WHATSAPP_PATH) {
+      try {
+        await fs.access(process.env.WHATSAPP_PATH);
+        return process.env.WHATSAPP_PATH;
+      } catch {
+        // Fall through to auto-detection if env path doesn't exist
+      }
+    }
+
     const platform = process.platform;
     const home = os.homedir();
     const isAndroid = process.env.PREFIX?.includes('com.termux');
-    
+
     let searchPaths: string[] = [];
     
     if (platform === 'win32') {

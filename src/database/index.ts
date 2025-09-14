@@ -5,6 +5,7 @@
 
 import { google, sheets_v4 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
+import { ChatMetadata, PORTUGUESE_COLUMN_LABELS, ChatFileInfo } from '../chat-metadata/types.js';
 
 export interface FileRecord {
   fileHash: string;
@@ -30,11 +31,16 @@ export interface ProgressRecord {
 export class SheetsDatabase {
   private sheets: sheets_v4.Sheets;
   private spreadsheetId: string | null = null;
+  private chatMetadataSpreadsheetId: string | null = null;
   private initialized = false;
-  
+
   private readonly SPREADSHEET_NAME = 'WhatsApp-Uploader-Database';
   private readonly UPLOADED_FILES_SHEET = 'uploaded_files';
   private readonly PROGRESS_SHEET = 'upload_progress';
+
+  // AIDEV-NOTE: Chat metadata will be stored in separate spreadsheet as requested
+  private readonly CHAT_METADATA_SPREADSHEET_NAME = 'chats';
+  private readonly CHAT_METADATA_SHEET = 'chats';
 
   constructor(private auth: OAuth2Client) {
     this.sheets = google.sheets({ version: 'v4', auth });
@@ -386,6 +392,767 @@ export class SheetsDatabase {
   getSpreadsheetUrl(): string | null {
     if (!this.spreadsheetId) return null;
     return `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/edit`;
+  }
+
+  // AIDEV-NOTE: Chat metadata Google Sheets integration methods (TASK-023)
+
+  /**
+   * Create or find chat metadata spreadsheet in Google Drive
+   * Creates spreadsheet at path: /WhatsApp Google Uploader/chats
+   */
+  async createChatMetadataSheet(): Promise<string> {
+    const drive = google.drive({ version: 'v3', auth: this.auth });
+
+    // AIDEV-NOTE: First, find or create the "WhatsApp Google Uploader" folder
+    const parentFolderResponse = await drive.files.list({
+      q: `name='WhatsApp Google Uploader' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name)'
+    });
+
+    let parentFolderId: string;
+    if (parentFolderResponse.data.files && parentFolderResponse.data.files.length > 0) {
+      const firstFolder = parentFolderResponse.data.files[0];
+      if (firstFolder?.id) {
+        parentFolderId = firstFolder.id;
+      } else {
+        throw new Error('Found folder but no ID available');
+      }
+    } else {
+      // Create the parent folder
+      const folderResponse = await drive.files.create({
+        requestBody: {
+          name: 'WhatsApp Google Uploader',
+          mimeType: 'application/vnd.google-apps.folder'
+        }
+      });
+      if (!folderResponse.data.id) {
+        throw new Error('Failed to create parent folder - no ID returned');
+      }
+      parentFolderId = folderResponse.data.id;
+    }
+
+    // AIDEV-NOTE: Search for existing chat metadata spreadsheet
+    const searchResponse = await drive.files.list({
+      q: `name='${this.CHAT_METADATA_SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and '${parentFolderId}' in parents and trashed=false`,
+      fields: 'files(id, name)'
+    });
+
+    if (searchResponse.data.files && searchResponse.data.files.length > 0) {
+      const existingFile = searchResponse.data.files[0];
+      if (existingFile?.id) {
+        this.chatMetadataSpreadsheetId = existingFile.id;
+        return existingFile.id;
+      }
+    }
+
+    // AIDEV-NOTE: Create new chat metadata spreadsheet with Portuguese headers and documentation
+    const createResponse = await this.sheets.spreadsheets.create({
+      requestBody: {
+        properties: {
+          title: this.CHAT_METADATA_SPREADSHEET_NAME
+        },
+        sheets: [
+          {
+            properties: {
+              title: this.CHAT_METADATA_SHEET,
+              gridProperties: { rowCount: 1000, columnCount: 33 }
+            }
+          },
+          {
+            properties: {
+              title: 'Documentação',
+              gridProperties: { rowCount: 50, columnCount: 3 }
+            }
+          }
+        ]
+      }
+    });
+
+    if (!createResponse.data.spreadsheetId) {
+      throw new Error('Failed to create chat metadata spreadsheet - no ID returned');
+    }
+    const newSpreadsheetId = createResponse.data.spreadsheetId;
+    this.chatMetadataSpreadsheetId = newSpreadsheetId;
+
+    // AIDEV-NOTE: Get the actual sheet ID from the created spreadsheet (TASK-023 fix)
+    const sheetId = createResponse.data.sheets?.[0]?.properties?.sheetId;
+    if (sheetId === undefined || sheetId === null) {
+      throw new Error('Failed to get sheet ID from created spreadsheet');
+    }
+
+    // AIDEV-NOTE: Move to the correct folder
+    await drive.files.update({
+      fileId: newSpreadsheetId,
+      addParents: parentFolderId
+    });
+
+    // AIDEV-NOTE: Initialize with Portuguese column headers, passing the actual sheet ID
+    await this.initializeChatMetadataHeaders(newSpreadsheetId, sheetId);
+
+    // AIDEV-NOTE: Initialize documentation sheet with column descriptions
+    await this.initializeDocumentationSheet(newSpreadsheetId);
+
+    return newSpreadsheetId;
+  }
+
+  /**
+   * Initialize chat metadata sheet with Portuguese column headers
+   */
+  private async initializeChatMetadataHeaders(spreadsheetId: string, sheetId: number): Promise<void> {
+    // AIDEV-NOTE: Portuguese column labels with enhanced columns
+    const headers = [
+      // Identificação
+      PORTUGUESE_COLUMN_LABELS.chatName,
+      PORTUGUESE_COLUMN_LABELS.chatJid,
+      PORTUGUESE_COLUMN_LABELS.chatType,
+      PORTUGUESE_COLUMN_LABELS.msgstoreDate,
+      // Estatísticas
+      PORTUGUESE_COLUMN_LABELS.totalMessages,
+      PORTUGUESE_COLUMN_LABELS.firstMessageDate,
+      PORTUGUESE_COLUMN_LABELS.lastMessageDate,
+      PORTUGUESE_COLUMN_LABELS.createdDate,
+      // Controle de Arquivos
+      PORTUGUESE_COLUMN_LABELS.totalMediaCount,
+      PORTUGUESE_COLUMN_LABELS.totalMediaSizeMB,
+      PORTUGUESE_COLUMN_LABELS.photosCount,
+      PORTUGUESE_COLUMN_LABELS.videosCount,
+      PORTUGUESE_COLUMN_LABELS.audiosCount,
+      PORTUGUESE_COLUMN_LABELS.documentsCount,
+      PORTUGUESE_COLUMN_LABELS.lastVerificationDate,
+      // Status de Sincronização
+      PORTUGUESE_COLUMN_LABELS.lastSyncDate,
+      PORTUGUESE_COLUMN_LABELS.lastUploadedFile,
+      PORTUGUESE_COLUMN_LABELS.syncedFilesCount,
+      PORTUGUESE_COLUMN_LABELS.failedUploadsCount,
+      PORTUGUESE_COLUMN_LABELS.uploadStatus,
+      PORTUGUESE_COLUMN_LABELS.uploadProgress,
+      PORTUGUESE_COLUMN_LABELS.uploadRetryCount,
+      // Google Services
+      PORTUGUESE_COLUMN_LABELS.photosAlbumName,
+      PORTUGUESE_COLUMN_LABELS.photosAlbumLink,
+      PORTUGUESE_COLUMN_LABELS.driveDirectoryName,
+      PORTUGUESE_COLUMN_LABELS.driveDirectoryLink,
+      // Configurações
+      PORTUGUESE_COLUMN_LABELS.syncEnabled,
+      PORTUGUESE_COLUMN_LABELS.maxMediaAgeDays,
+      // Organização
+      PORTUGUESE_COLUMN_LABELS.category,
+      PORTUGUESE_COLUMN_LABELS.isArchived,
+      PORTUGUESE_COLUMN_LABELS.notes
+    ];
+
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${this.CHAT_METADATA_SHEET}!A1:AG1`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [headers]
+      }
+    });
+  }
+
+  /**
+   * Initialize documentation sheet with column descriptions
+   * AIDEV-NOTE: Creates a documentation sheet explaining each column
+   */
+  private async initializeDocumentationSheet(spreadsheetId: string): Promise<void> {
+    const documentation = [
+      ['Coluna', 'Tipo', 'Descrição'],
+      ['', '', ''],
+      ['--- IDENTIFICAÇÃO ---', '', ''],
+      ['Nome do Chat', 'Texto', 'Nome do contato ou grupo conforme aparece no WhatsApp'],
+      ['ID WhatsApp (JID)', 'Texto', 'Identificador único do chat no sistema WhatsApp'],
+      ['Tipo (Individual/Grupo)', 'Texto', 'Se é conversa individual ou grupo'],
+      ['Data do Backup', 'Data', 'Data quando o backup msgstore.db foi criado'],
+      ['', '', ''],
+      ['--- ESTATÍSTICAS ---', '', ''],
+      ['Total de Mensagens', 'Número', 'Quantidade total de mensagens no chat'],
+      ['Primeira Mensagem', 'Data/Hora', 'Data e hora da primeira mensagem do chat'],
+      ['Última Mensagem', 'Data/Hora', 'Data e hora da última mensagem do chat'],
+      ['Data de Criação', 'Data', 'Quando o chat/grupo foi criado'],
+      ['', '', ''],
+      ['--- CONTROLE DE ARQUIVOS ---', '', ''],
+      ['Total de Mídias', 'Número', 'Quantidade total de arquivos de mídia'],
+      ['Tamanho Total (MB)', 'Número', 'Espaço total ocupado pelos arquivos em megabytes'],
+      ['Qtd Fotos', 'Número', 'Quantidade de fotos no chat'],
+      ['Qtd Vídeos', 'Número', 'Quantidade de vídeos no chat'],
+      ['Qtd Áudios', 'Número', 'Quantidade de áudios no chat'],
+      ['Qtd Documentos', 'Número', 'Quantidade de documentos no chat'],
+      ['Última Verificação', 'Data/Hora', 'Quando foi feita a última varredura de arquivos'],
+      ['', '', ''],
+      ['--- STATUS DE SINCRONIZAÇÃO ---', '', ''],
+      ['Última Sincronização', 'Data/Hora', 'Última vez que os arquivos foram sincronizados'],
+      ['Último Arquivo Enviado', 'Texto', 'Nome do último arquivo enviado para o Google'],
+      ['Arquivos Sincronizados', 'Número', 'Quantidade de arquivos já enviados'],
+      ['Falhas de Upload', 'Número', 'Quantidade de arquivos que falharam no envio'],
+      ['Status de Upload', 'Texto', 'Pendente/Em Progresso/Completo/Erro'],
+      ['Progresso (%)', 'Percentual', 'Percentual de arquivos já enviados (0-100)'],
+      ['Tentativas de Upload', 'Número', 'Contador de tentativas com falha'],
+      ['', '', ''],
+      ['--- GOOGLE SERVICES ---', '', ''],
+      ['Álbum Google Photos', 'Texto', 'Nome do álbum criado no Google Photos'],
+      ['Link do Álbum', 'URL', 'Link direto para o álbum no Google Photos'],
+      ['Pasta Google Drive', 'Texto', 'Nome da pasta criada no Google Drive'],
+      ['Link da Pasta', 'URL', 'Link direto para a pasta no Google Drive'],
+      ['', '', ''],
+      ['--- CONFIGURAÇÕES ---', '', ''],
+      ['Sincronização Ativa', 'Sim/Não', 'Se o chat deve ser sincronizado automaticamente'],
+      ['Retenção (dias)', 'Número', 'Quantos dias manter arquivos antigos (padrão: 90)'],
+      ['', '', ''],
+      ['--- ORGANIZAÇÃO ---', '', ''],
+      ['Categoria', 'Lista', 'Família/Trabalho/Amigos/Clientes/Outros'],
+      ['Arquivado', 'Sim/Não', 'Se o chat está arquivado no WhatsApp'],
+      ['Observações', 'Texto', 'Campo livre para anotações do usuário']
+    ];
+
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: 'Documentação!A1:C46',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: documentation
+      }
+    });
+  }
+
+  /**
+   * Read existing chat metadata from Google Sheets
+   * AIDEV-NOTE: Reads current data to preserve user settings and sync status
+   */
+  private async readExistingChatMetadata(): Promise<Map<string, any>> {
+    const existingData = new Map<string, any>();
+
+    try {
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.chatMetadataSpreadsheetId!,
+        range: `${this.CHAT_METADATA_SHEET}!A2:AG`
+      });
+
+      const rows = response.data.values || [];
+
+      // AIDEV-NOTE: Map existing data by chatJid (column B, index 1)
+      rows.forEach(row => {
+        if (row[1]) { // chatJid
+          existingData.set(row[1], {
+            // Preserve sync status (columns 16-22)
+            lastSyncDate: row[15] || '',
+            lastUploadedFile: row[16] || '',
+            syncedFilesCount: parseInt(row[17]) || 0,
+            failedUploadsCount: parseInt(row[18]) || 0,
+            uploadStatus: row[19] || 'Pendente',
+            uploadProgress: parseInt(row[20]) || 0,
+            uploadRetryCount: parseInt(row[21]) || 0,
+            // Preserve Google services (columns 23-26)
+            photosAlbumName: row[22] || '',
+            photosAlbumLink: row[23] || '',
+            driveDirectoryName: row[24] || '',
+            driveDirectoryLink: row[25] || '',
+            // Preserve user settings (columns 27-28)
+            syncEnabled: row[26] === 'true' || row[26] === true,
+            maxMediaAgeDays: parseInt(row[27]) || 90,
+            // Preserve organization (columns 29-31)
+            category: row[28] || '',
+            isArchived: row[29] === 'true' || row[29] === true,
+            notes: row[30] || ''
+          });
+        }
+      });
+    } catch (error) {
+      // If sheet doesn't exist or error reading, return empty map
+      console.log('No existing data to preserve');
+    }
+
+    return existingData;
+  }
+
+  /**
+   * Merge new chat metadata with existing preserving important fields
+   * AIDEV-NOTE: Intelligent merge that updates stats but preserves user data
+   */
+  private mergeWithExisting(newChat: ChatMetadata, existing: any): ChatMetadata {
+    return {
+      ...newChat,
+      // Preserve sync status if exists
+      lastSyncDate: existing?.lastSyncDate ? new Date(existing.lastSyncDate) : undefined,
+      lastUploadedFile: existing?.lastUploadedFile || newChat.lastUploadedFile,
+      syncedFilesCount: existing?.syncedFilesCount || newChat.syncedFilesCount,
+      failedUploadsCount: existing?.failedUploadsCount || newChat.failedUploadsCount,
+      uploadStatus: existing?.uploadStatus || newChat.uploadStatus,
+      uploadProgress: existing?.uploadProgress || newChat.uploadProgress,
+      uploadRetryCount: existing?.uploadRetryCount || newChat.uploadRetryCount,
+      // Preserve Google services
+      photosAlbumName: existing?.photosAlbumName || newChat.photosAlbumName,
+      photosAlbumLink: existing?.photosAlbumLink || newChat.photosAlbumLink,
+      driveDirectoryName: existing?.driveDirectoryName || newChat.driveDirectoryName,
+      driveDirectoryLink: existing?.driveDirectoryLink || newChat.driveDirectoryLink,
+      // Preserve user settings
+      syncEnabled: existing?.syncEnabled !== undefined ? existing.syncEnabled : newChat.syncEnabled,
+      maxMediaAgeDays: existing?.maxMediaAgeDays || newChat.maxMediaAgeDays,
+      // Preserve organization
+      category: existing?.category || newChat.category,
+      isArchived: existing?.isArchived !== undefined ? existing.isArchived : newChat.isArchived,
+      notes: existing?.notes || newChat.notes
+    };
+  }
+
+  /**
+   * Save chat metadata to Google Sheets
+   */
+  async saveChatMetadata(chatMetadata: ChatMetadata[]): Promise<void> {
+    if (chatMetadata.length === 0) {
+      console.log('ℹ️  No chat metadata to save');
+      return;
+    }
+
+    // AIDEV-NOTE: Ensure chat metadata spreadsheet exists
+    if (!this.chatMetadataSpreadsheetId) {
+      await this.createChatMetadataSheet();
+    }
+
+    // AIDEV-NOTE: Read existing data to preserve user settings and sync status
+    const existingData = await this.readExistingChatMetadata();
+
+    // AIDEV-NOTE: Merge new data with existing preserving important fields
+    const mergedMetadata = chatMetadata.map(chat => {
+      const existing = existingData.get(chat.chatJid);
+      return existing ? this.mergeWithExisting(chat, existing) : chat;
+    });
+
+    // AIDEV-NOTE: Clear and rewrite with merged data
+    await this.sheets.spreadsheets.values.clear({
+      spreadsheetId: this.chatMetadataSpreadsheetId!,
+      range: `${this.CHAT_METADATA_SHEET}!A2:AG`
+    });
+
+    // AIDEV-NOTE: Convert merged metadata to sheet rows with all enhanced columns
+    const rows = mergedMetadata.map(chat => [
+      // Identificação
+      chat.chatName,
+      chat.chatJid,
+      chat.chatType,
+      chat.msgstoreDate.toISOString().split('T')[0],
+      // Estatísticas
+      chat.totalMessages,
+      chat.firstMessageDate ? chat.firstMessageDate.toISOString() : '',
+      chat.lastMessageDate ? chat.lastMessageDate.toISOString() : '',
+      chat.createdDate ? chat.createdDate.toISOString() : '',
+      // Controle de Arquivos
+      chat.totalMediaCount,
+      chat.totalMediaSizeMB,
+      chat.photosCount,
+      chat.videosCount,
+      chat.audiosCount,
+      chat.documentsCount,
+      chat.lastVerificationDate ? chat.lastVerificationDate.toISOString() : '',
+      // Status de Sincronização
+      chat.lastSyncDate ? chat.lastSyncDate.toISOString() : '',
+      chat.lastUploadedFile || '',
+      chat.syncedFilesCount,
+      chat.failedUploadsCount,
+      chat.uploadStatus,
+      chat.uploadProgress,
+      chat.uploadRetryCount,
+      // Google Services
+      chat.photosAlbumName || '',
+      chat.photosAlbumLink || '',
+      chat.driveDirectoryName || '',
+      chat.driveDirectoryLink || '',
+      // Configurações
+      chat.syncEnabled,
+      chat.maxMediaAgeDays,
+      // Organização
+      chat.category || '',
+      chat.isArchived,
+      chat.notes || ''
+    ]);
+
+    await this.sheets.spreadsheets.values.append({
+      spreadsheetId: this.chatMetadataSpreadsheetId!,
+      range: `${this.CHAT_METADATA_SHEET}!A2:AG`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: rows
+      }
+    });
+
+    console.log(`✓ Updated metadata for ${mergedMetadata.length} chats (${existingData.size} existing preserved)`);
+  }
+
+  /**
+   * Get chat metadata spreadsheet URL for viewing
+   */
+  getChatMetadataSpreadsheetUrl(): string | null {
+    if (!this.chatMetadataSpreadsheetId) return null;
+    return `https://docs.google.com/spreadsheets/d/${this.chatMetadataSpreadsheetId}/edit`;
+  }
+
+  /**
+   * Initialize chat metadata functionality (separate from main database)
+   */
+  async initializeChatMetadata(): Promise<void> {
+    await this.createChatMetadataSheet();
+  }
+
+  // AIDEV-NOTE: Per-Chat Google Sheets Integration (TASK-025)
+  // Methods for creating individual chat file tracking spreadsheets
+
+  /**
+   * Portuguese column headers for per-chat file tracking sheets
+   * Maps exactly to ChatFileInfo interface as specified in TASK-025
+   */
+  private readonly CHAT_FILE_COLUMNS = [
+    'id do arquivo',                 // messageId
+    'nome do arquivo',              // fileName
+    'tipo de arquivo',              // mediaType
+    'tamanho do arquivo',           // size/actualSize
+    'data da mensagem',             // messageTimestamp
+    'remetente',                    // senderJid
+    'status do upload',             // uploadStatus
+    'data do upload',               // uploadDate
+    'arquivo deletado do celular',  // fileDeletedFromPhone
+    'ultima mensagem de erro',      // uploadError
+    'tentativas de upload',         // uploadAttempts
+    'nome do diretorio/album',      // directory/album name (populated during upload)
+    'link para diretorio/album',    // directory/album link (populated during upload)
+    'link do arquivo/midia'         // file/media link (populated during upload)
+  ];
+
+  /**
+   * Create or find per-chat file tracking spreadsheet
+   * Creates spreadsheet at path: /WhatsApp Google Uploader/[chat_name]_[JID]
+   * @param chatJid Chat JID (e.g. "5511999999999@s.whatsapp.net")
+   * @param chatName Chat display name for sheet naming
+   * @returns Spreadsheet ID
+   */
+  async createChatFileSheet(chatJid: string, chatName: string): Promise<string> {
+    const drive = google.drive({ version: 'v3', auth: this.auth });
+
+    // AIDEV-NOTE: Find or create the "WhatsApp Google Uploader" parent folder
+    const parentFolderResponse = await drive.files.list({
+      q: `name='WhatsApp Google Uploader' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name)'
+    });
+
+    let parentFolderId: string;
+    if (parentFolderResponse.data.files && parentFolderResponse.data.files.length > 0) {
+      const firstFolder = parentFolderResponse.data.files[0];
+      if (firstFolder?.id) {
+        parentFolderId = firstFolder.id;
+      } else {
+        throw new Error('Found folder but no ID available');
+      }
+    } else {
+      // Create the parent folder
+      const folderResponse = await drive.files.create({
+        requestBody: {
+          name: 'WhatsApp Google Uploader',
+          mimeType: 'application/vnd.google-apps.folder'
+        }
+      });
+      if (!folderResponse.data.id) {
+        throw new Error('Failed to create parent folder - no ID returned');
+      }
+      parentFolderId = folderResponse.data.id;
+    }
+
+    // AIDEV-NOTE: Generate sheet name from chat name and JID
+    const sheetName = this.sanitizeChatSheetName(chatName, chatJid);
+
+    // AIDEV-NOTE: Search for existing chat file spreadsheet
+    const searchResponse = await drive.files.list({
+      q: `name='${sheetName}' and mimeType='application/vnd.google-apps.spreadsheet' and '${parentFolderId}' in parents and trashed=false`,
+      fields: 'files(id, name)'
+    });
+
+    if (searchResponse.data.files && searchResponse.data.files.length > 0) {
+      const existingFile = searchResponse.data.files[0];
+      if (existingFile?.id) {
+        return existingFile.id;
+      }
+    }
+
+    // AIDEV-NOTE: Create new chat file tracking spreadsheet
+    const createResponse = await this.sheets.spreadsheets.create({
+      requestBody: {
+        properties: {
+          title: sheetName
+        },
+        sheets: [
+          {
+            properties: {
+              title: 'Arquivos',
+              gridProperties: { rowCount: 10000, columnCount: 14 }
+            }
+          }
+        ]
+      }
+    });
+
+    if (!createResponse.data.spreadsheetId) {
+      throw new Error('Failed to create chat file spreadsheet - no ID returned');
+    }
+    const newSpreadsheetId = createResponse.data.spreadsheetId;
+
+    // AIDEV-NOTE: Move to the correct folder
+    await drive.files.update({
+      fileId: newSpreadsheetId,
+      addParents: parentFolderId
+    });
+
+    // AIDEV-NOTE: Initialize with Portuguese column headers
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: newSpreadsheetId,
+      range: 'Arquivos!A1:N1',
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [this.CHAT_FILE_COLUMNS]
+      }
+    });
+
+    return newSpreadsheetId;
+  }
+
+  /**
+   * Save chat files to per-chat spreadsheet
+   * Creates/updates spreadsheet with file tracking data
+   * @param chatJid Chat JID for sheet identification
+   * @param chatName Chat display name for sheet naming
+   * @param files Array of ChatFileInfo to save
+   */
+  async saveChatFiles(chatJid: string, chatName: string, files: ChatFileInfo[]): Promise<void> {
+    if (files.length === 0) {
+      console.log(`ℹ️  No files to save for chat: ${chatName}`);
+      return;
+    }
+
+    // AIDEV-NOTE: Create or get existing spreadsheet
+    const spreadsheetId = await this.createChatFileSheet(chatJid, chatName);
+
+    // AIDEV-NOTE: Read existing data to avoid duplicates and preserve user edits
+    const existingData = await this.readExistingChatFiles(spreadsheetId);
+
+    // AIDEV-NOTE: Merge new files with existing, updating by messageId
+    const mergedFiles = this.mergeChatFiles(files, existingData);
+
+    // AIDEV-NOTE: Clear and rewrite with merged data
+    await this.sheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range: 'Arquivos!A2:N'
+    });
+
+    // AIDEV-NOTE: Convert ChatFileInfo to sheet rows
+    const rows = mergedFiles.map(file => this.transformChatFileToRow(file));
+
+    await this.sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Arquivos!A2:N',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: rows
+      }
+    });
+
+    console.log(`✓ Updated ${mergedFiles.length} files for chat: ${chatName} (${existingData.size} existing preserved)`);
+  }
+
+  /**
+   * Update upload status for a specific file in chat spreadsheet
+   * @param chatJid Chat JID
+   * @param chatName Chat display name
+   * @param fileId Message ID of the file
+   * @param status New upload status and tracking info
+   */
+  async updateFileUploadStatus(
+    chatJid: string,
+    chatName: string,
+    fileId: string,
+    status: {
+      uploadStatus: 'pending' | 'uploaded' | 'failed' | 'skipped';
+      uploadDate?: Date;
+      uploadError?: string;
+      uploadAttempts?: number;
+      directoryName?: string;
+      directoryLink?: string;
+      fileLink?: string;
+      fileDeletedFromPhone?: boolean;
+    }
+  ): Promise<void> {
+    try {
+      // AIDEV-NOTE: Get or create spreadsheet
+      const spreadsheetId = await this.createChatFileSheet(chatJid, chatName);
+
+      // AIDEV-NOTE: Find the row for this file ID
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Arquivos!A:A'
+      });
+
+      const fileIds = response.data.values || [];
+      const rowIndex = fileIds.findIndex(row => row[0] === fileId);
+
+      if (rowIndex === -1) {
+        console.warn(`File ID ${fileId} not found in chat ${chatName} spreadsheet`);
+        return;
+      }
+
+      // AIDEV-NOTE: Update specific columns (G-N) for upload tracking
+      const updateRow = rowIndex + 1; // Convert to 1-based index
+      const updateRange = `Arquivos!G${updateRow}:N${updateRow}`;
+
+      const updateValues = [
+        status.uploadStatus || 'pending',                              // G: status do upload
+        status.uploadDate ? status.uploadDate.toISOString() : '',     // H: data do upload
+        status.fileDeletedFromPhone || false,                         // I: arquivo deletado do celular
+        status.uploadError || '',                                      // J: ultima mensagem de erro
+        status.uploadAttempts || 0,                                    // K: tentativas de upload
+        status.directoryName || '',                                    // L: nome do diretorio/album
+        status.directoryLink || '',                                    // M: link para diretorio/album
+        status.fileLink || ''                                          // N: link do arquivo/midia
+      ];
+
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: updateRange,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [updateValues]
+        }
+      });
+
+      console.log(`✓ Updated upload status for file ${fileId} in chat: ${chatName}`);
+
+    } catch (error) {
+      console.error(`Failed to update upload status for file ${fileId}:`, error instanceof Error ? error.message : 'Unknown error');
+      throw error;
+    }
+  }
+
+  /**
+   * Get chat file spreadsheet URL for viewing
+   * @param chatJid Chat JID
+   * @param chatName Chat display name
+   * @returns Spreadsheet URL or null if not found
+   */
+  async getChatFileSheetUrl(chatJid: string, chatName: string): Promise<string | null> {
+    try {
+      const spreadsheetId = await this.createChatFileSheet(chatJid, chatName);
+      return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    } catch (error) {
+      console.error(`Failed to get chat file sheet URL:`, error instanceof Error ? error.message : 'Unknown error');
+      return null;
+    }
+  }
+
+  /**
+   * Sanitize chat name and JID for Google Sheets filename
+   * @param chatName Chat display name
+   * @param chatJid Chat JID
+   * @returns Sanitized sheet name
+   */
+  private sanitizeChatSheetName(chatName: string, chatJid: string): string {
+    // AIDEV-NOTE: Clean chat name for filename compatibility
+    const cleanChatName = chatName
+      .trim()
+      .replace(/[\\/*?:"<>|]/g, '_')  // Replace invalid filename chars
+      .replace(/\s+/g, ' ')            // Collapse multiple spaces
+      .substring(0, 50);               // Limit length
+
+    // AIDEV-NOTE: Extract just the number/ID part from JID for brevity
+    const cleanJid = chatJid.split('@')[0]; // e.g. "5511999999999@s.whatsapp.net" -> "5511999999999"
+
+    return `${cleanChatName}_${cleanJid}`;
+  }
+
+  /**
+   * Transform ChatFileInfo to spreadsheet row format
+   * @param file ChatFileInfo to transform
+   * @returns Array of values for spreadsheet row
+   */
+  private transformChatFileToRow(file: ChatFileInfo): any[] {
+    return [
+      file.messageId,                                                 // A: id do arquivo
+      file.fileName,                                                  // B: nome do arquivo
+      file.mediaType,                                                 // C: tipo de arquivo
+      file.actualSize || file.size || 0,                             // D: tamanho do arquivo
+      file.messageTimestamp.toISOString(),                           // E: data da mensagem
+      file.senderJid || 'Você',                                      // F: remetente ("Você" for outgoing)
+      file.uploadStatus,                                              // G: status do upload
+      file.uploadDate ? file.uploadDate.toISOString() : '',          // H: data do upload
+      file.fileDeletedFromPhone,                                      // I: arquivo deletado do celular
+      file.uploadError || '',                                         // J: ultima mensagem de erro
+      file.uploadAttempts,                                            // K: tentativas de upload
+      '',                                                             // L: nome do diretorio/album (populated during upload)
+      '',                                                             // M: link para diretorio/album (populated during upload)
+      ''                                                              // N: link do arquivo/midia (populated during upload)
+    ];
+  }
+
+  /**
+   * Read existing chat files from spreadsheet to preserve user edits
+   * @param spreadsheetId Spreadsheet ID to read from
+   * @returns Map of messageId -> existing row data
+   */
+  private async readExistingChatFiles(spreadsheetId: string): Promise<Map<string, any>> {
+    const existingData = new Map<string, any>();
+
+    try {
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Arquivos!A2:N'
+      });
+
+      const rows = response.data.values || [];
+
+      // AIDEV-NOTE: Map existing data by messageId (column A, index 0)
+      rows.forEach(row => {
+        if (row[0]) { // messageId
+          existingData.set(row[0], {
+            // Preserve upload tracking columns (G-N, indices 6-13)
+            uploadStatus: row[6] || 'pending',
+            uploadDate: row[7] || '',
+            fileDeletedFromPhone: row[8] === 'true' || row[8] === true,
+            uploadError: row[9] || '',
+            uploadAttempts: parseInt(row[10]) || 0,
+            directoryName: row[11] || '',
+            directoryLink: row[12] || '',
+            fileLink: row[13] || ''
+          });
+        }
+      });
+    } catch (error) {
+      // If sheet doesn't exist or error reading, return empty map
+      console.log('No existing data to preserve for chat file sheet');
+    }
+
+    return existingData;
+  }
+
+  /**
+   * Merge new chat files with existing data preserving upload tracking
+   * @param newFiles New ChatFileInfo array from database
+   * @param existingData Existing data from spreadsheet
+   * @returns Merged ChatFileInfo array
+   */
+  private mergeChatFiles(newFiles: ChatFileInfo[], existingData: Map<string, any>): ChatFileInfo[] {
+    return newFiles.map(file => {
+      const existing = existingData.get(file.messageId);
+      if (!existing) {
+        return file; // New file, use as-is
+      }
+
+      // AIDEV-NOTE: Merge with existing upload tracking data
+      return {
+        ...file,
+        // Preserve upload tracking from existing data
+        uploadStatus: (existing.uploadStatus as ChatFileInfo['uploadStatus']) || file.uploadStatus,
+        uploadDate: existing.uploadDate ? new Date(existing.uploadDate) : file.uploadDate,
+        uploadError: existing.uploadError || file.uploadError,
+        uploadAttempts: existing.uploadAttempts || file.uploadAttempts,
+        fileDeletedFromPhone: existing.fileDeletedFromPhone !== undefined ? existing.fileDeletedFromPhone : file.fileDeletedFromPhone
+      };
+    });
   }
 }
 

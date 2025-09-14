@@ -7,6 +7,7 @@
 import { Command } from 'commander';
 import { config, envFileExists, createEnvFile } from '../config';
 import { FileInfo } from '../scanner';
+import { ChatFileInfo } from '../chat-metadata/types';
 
 export class CLIApplication {
   private program: Command;
@@ -316,20 +317,24 @@ export class CLIApplication {
         }
       });
 
-    // Scan command - AIDEV-NOTE: scan-command; integrates existing Scanner with CLI
+    // Scan command - AIDEV-NOTE: scan-command; integrates Scanner with Chat Metadata (TASK-023)
     this.program
       .command('scan')
-      .description('Scan WhatsApp directory for media files')
+      .description('Scan WhatsApp directory for media files and save chat metadata to Google Sheets')
       .argument('[path]', 'Custom WhatsApp path (optional)')
-      .action(async (customPath) => {
+      .option('--dry-run', 'Preview mode - skip Google Sheets saving')
+      .action(async (customPath, options) => {
         try {
           const { WhatsAppScanner } = require('../scanner');
+          const { ChatMetadataExtractor } = require('../chat-metadata');
+          const isDryRun = options.dryRun;
 
           console.log('Scanning WhatsApp media files...\n');
 
-          // Create scanner with optional custom path
+          // Create scanner with custom path or config path
+          // AIDEV-NOTE: env-config-priority; use config.whatsappPath when no custom path (TASK-023 fix)
           const scanner = new WhatsAppScanner({
-            whatsappPath: customPath
+            whatsappPath: customPath || config.whatsappPath
           });
 
           // Use existing Scanner API
@@ -379,6 +384,60 @@ export class CLIApplication {
           const totalCount = files.length;
           console.log(`Total: ${totalCount} files, ${(totalSize / 1024 / 1024).toFixed(1)} MB`);
 
+          // AIDEV-NOTE: Chat metadata extraction and Google Sheets integration (TASK-023)
+          if (!isDryRun) {
+            console.log('\n📊 Extracting chat metadata...');
+
+            try {
+              // Extract chat metadata from msgstore.db
+              const chatExtractor = new ChatMetadataExtractor();
+              const chatMetadata = await chatExtractor.extractChatMetadata();
+
+              if (chatMetadata.length > 0) {
+                console.log('\n☁️  Saving to Google Sheets...');
+
+                // Initialize Google APIs and SheetsDatabase
+                const { GoogleApis } = require('../google-apis');
+                const { SheetsDatabase } = require('../database');
+
+                const googleApis = new GoogleApis({
+                  credentialsPath: './credentials.json',
+                  tokenPath: './tokens/google-tokens.json'
+                });
+
+                await googleApis.initialize();
+
+                if (!googleApis.isAuthenticated()) {
+                  console.log('⚠️  Authentication required for Google Sheets saving.');
+                  console.log('   Run "whatsapp-uploader auth" first, or use --dry-run flag to skip.');
+                  return;
+                }
+
+                // Create sheets database and save chat metadata
+                const sheetsDb = new SheetsDatabase(googleApis.auth);
+                await sheetsDb.initializeChatMetadata();
+                await sheetsDb.saveChatMetadata(chatMetadata);
+
+                // Display success message with spreadsheet link
+                const spreadsheetUrl = sheetsDb.getChatMetadataSpreadsheetUrl();
+                console.log('\n✓ Chat metadata saved to Google Sheets!');
+                if (spreadsheetUrl) {
+                  console.log(`📋 View at: ${spreadsheetUrl}`);
+                }
+              } else {
+                console.log('\nℹ️  No chat metadata found (msgstore.db unavailable or empty)');
+                console.log('   To extract chat metadata: run "npm run decrypt" first');
+              }
+
+            } catch (chatError) {
+              console.warn('\n⚠️  Chat metadata extraction failed:', (chatError as Error).message);
+              console.log('   File scan completed successfully. Chat metadata can be added later.');
+            }
+          } else {
+            console.log('\n🔍 Dry-run mode: Skipping Google Sheets operations');
+            console.log('   Remove --dry-run flag to save chat metadata to Google Sheets');
+          }
+
         } catch (error) {
           console.error('Scan failed:', (error as Error).message);
           if ((error as Error).message.includes('not found')) {
@@ -390,6 +449,270 @@ export class CLIApplication {
           process.exit(1);
         }
       });
+
+    // Upload command - AIDEV-NOTE: upload-command; chat-specific file upload with progress tracking (TASK-027)
+    this.program
+      .command('upload')
+      .description('Upload media files from specific chat to Google services')
+      .requiredOption('--chat <jid>', 'Chat JID to upload files from (e.g., 5511999999999@c.us)')
+      .option('--skip-failed', 'Skip files that previously failed to upload')
+      .option('--dry-run', 'Preview mode - show files that would be uploaded without uploading')
+      .action(async (options) => {
+        await this.handleUploadCommand(options);
+      });
+  }
+
+  // AIDEV-NOTE: upload-handler; handles chat-specific upload command with chronological ordering
+  private async handleUploadCommand(options: { chat: string; skipFailed?: boolean; dryRun?: boolean }): Promise<void> {
+    try {
+      const { ChatFileAnalyzer } = require('../chat-metadata');
+      const { SheetsDatabase } = require('../database');
+      const { UploaderManager } = require('../uploader');
+      const { GoogleApis } = require('../google-apis');
+
+      const chatJid = options.chat.trim();
+      const skipFailed = options.skipFailed || false;
+      const isDryRun = options.dryRun || false;
+
+      // Validate JID format
+      if (!this.isValidJid(chatJid)) {
+        console.error('Error: Invalid chat JID format.');
+        console.log('\nExpected format examples:');
+        console.log('  Individual chat: 5511999999999@s.whatsapp.net');
+        console.log('  Group chat: 120363XXXXXXXXXX@g.us');
+        console.log('  Business chat: 5511999999999@c.us');
+        process.exit(1);
+      }
+
+      console.log(`🔍 Analyzing chat: ${chatJid}\n`);
+
+      // Initialize chat file analyzer
+      const analyzer = new ChatFileAnalyzer();
+
+      // Get chat name for user-friendly display
+      const chatName = await analyzer.getChatName(chatJid);
+      console.log(`📱 Chat: ${chatName}`);
+
+      // Analyze chat files (chronologically sorted by default)
+      const files = await analyzer.analyzeChat(chatJid);
+
+      if (files.length === 0) {
+        console.log('ℹ️  No media files found in this chat.');
+        console.log('\nPossible reasons:');
+        console.log('- Chat has no media files');
+        console.log('- Incorrect JID format');
+        console.log('- Chat doesn\'t exist in msgstore.db');
+        console.log('\nTip: Use "npm run scan" first to see all available chats');
+        return;
+      }
+
+      // Filter files that exist on filesystem
+      const existingFiles = files.filter((f: ChatFileInfo) => f.fileExists);
+      console.log(`📁 Found ${files.length} media files (${existingFiles.length} exist on filesystem)`);
+
+      if (existingFiles.length === 0) {
+        console.log('❌ No files found on filesystem to upload.');
+        console.log('\nThis usually means:');
+        console.log('- Files were already deleted from phone');
+        console.log('- WhatsApp path is incorrect');
+        console.log('- Files are in a different location');
+        return;
+      }
+
+      // Show date range
+      if (files.length > 0) {
+        const oldestFile = files[0];
+        const newestFile = files[files.length - 1];
+        console.log(`📅 Date range: ${oldestFile.messageTimestamp.toLocaleDateString()} to ${newestFile.messageTimestamp.toLocaleDateString()}\n`);
+      }
+
+      if (!isDryRun) {
+        // Initialize Google APIs and authenticate
+        console.log('🔐 Checking authentication...');
+        const googleApis = new GoogleApis({
+          credentialsPath: './credentials.json',
+          tokenPath: './tokens/google-tokens.json'
+        });
+
+        await googleApis.initialize();
+
+        if (!googleApis.isAuthenticated()) {
+          console.error('❌ Authentication required for uploads.');
+          console.log('\nRun "npm run auth" to authenticate with Google services first.');
+          process.exit(1);
+        }
+        console.log('✓ Authenticated with Google services\n');
+
+        // Initialize sheets database and check per-chat sheet
+        console.log('☁️  Checking Google Sheets...');
+        const sheetsDb = new SheetsDatabase(googleApis.auth);
+
+        // Load existing upload status from per-chat sheets
+        await sheetsDb.saveChatFiles(chatJid, chatName, existingFiles);
+
+        // Read current upload status from sheets
+        const spreadsheetId = await sheetsDb.createChatFileSheet(chatJid, chatName);
+        const existingData = await sheetsDb.readExistingChatFiles(spreadsheetId);
+
+        // Update files with current upload status from sheets
+        const filesWithStatus = this.mergeUploadStatus(existingFiles, existingData);
+
+        // Filter files based on upload status and options
+        let filesToUpload = filesWithStatus.filter(file => {
+          if (file.uploadStatus === 'uploaded') {
+            return false; // Always skip uploaded files
+          }
+          if (skipFailed && file.uploadStatus === 'failed') {
+            return false; // Skip failed files if --skip-failed flag is used
+          }
+          return true; // Upload pending and failed files (unless --skip-failed)
+        });
+
+        const skippedUploaded = filesWithStatus.filter(f => f.uploadStatus === 'uploaded').length;
+        const skippedFailed = skipFailed ? filesWithStatus.filter(f => f.uploadStatus === 'failed').length : 0;
+
+        console.log(`📊 Upload Status:`);
+        console.log(`   ${filesToUpload.length} files ready for upload`);
+        console.log(`   ${skippedUploaded} files already uploaded (skipping)`);
+        if (skippedFailed > 0) {
+          console.log(`   ${skippedFailed} failed files skipped (--skip-failed flag used)`);
+        } else {
+          const failedToRetry = filesWithStatus.filter(f => f.uploadStatus === 'failed').length;
+          if (failedToRetry > 0) {
+            console.log(`   ${failedToRetry} failed files will be retried`);
+          }
+        }
+        console.log();
+
+        if (filesToUpload.length === 0) {
+          console.log('✅ All files are already processed! Nothing to upload.');
+          return;
+        }
+
+        // Initialize uploader manager
+        console.log('🚀 Starting uploads...\n');
+        const uploaderManager = new UploaderManager({
+          credentialsPath: './credentials.json',
+          tokenPath: './tokens/google-tokens.json'
+        });
+        await uploaderManager.initialize();
+
+        // Upload files sequentially with progress tracking
+        let uploadedCount = 0;
+        let failedCount = 0;
+        const startTime = Date.now();
+
+        for (let i = 0; i < filesToUpload.length; i++) {
+          const file = filesToUpload[i]!;
+          const progress = Math.round(((i + 1) / filesToUpload.length) * 100);
+
+          console.log(`[${i + 1}/${filesToUpload.length}] Uploading: ${file.fileName}`);
+          console.log(`   Size: ${(file.actualSize! / 1024 / 1024).toFixed(1)} MB | Progress: ${progress}%`);
+          console.log(`   Date: ${file.messageTimestamp.toLocaleDateString()}`);
+
+          try {
+            // Convert ChatFileInfo to FileUpload format
+            const fileUpload = {
+              path: file.filePath!,
+              name: file.fileName,
+              size: file.actualSize!,
+              mimeType: file.mimeType || 'application/octet-stream'
+            };
+
+            // Upload single file
+            await uploaderManager.uploadFiles([fileUpload], { chatId: chatJid });
+
+            // Update Google Sheets with success
+            file.uploadStatus = 'uploaded';
+            await sheetsDb.updateFileUploadStatus(chatJid, chatName, file.messageId, {
+              uploadStatus: 'uploaded',
+              uploadDate: new Date(),
+              fileLink: `https://photos.google.com/`, // Placeholder - actual link would come from upload response
+              uploadError: undefined
+            });
+
+            uploadedCount++;
+            console.log(`   ✅ Uploaded successfully\n`);
+
+          } catch (uploadError) {
+            failedCount++;
+            console.log(`   ❌ Upload failed: ${(uploadError as Error).message}\n`);
+
+            // Update Google Sheets with failure
+            file.uploadStatus = 'failed';
+            await sheetsDb.updateFileUploadStatus(chatJid, chatName, file.messageId, {
+              uploadStatus: 'failed',
+              uploadDate: new Date(),
+              uploadError: (uploadError as Error).message
+            });
+          }
+        }
+
+        // Show completion summary
+        const totalTime = Math.round((Date.now() - startTime) / 1000);
+        console.log('🎉 Upload Complete!\n');
+        console.log(`📈 Results:`);
+        console.log(`   ✅ Uploaded: ${uploadedCount} files`);
+        console.log(`   ❌ Failed: ${failedCount} files`);
+        console.log(`   ⏭️  Already uploaded: ${skippedUploaded} files`);
+        if (skippedFailed > 0) {
+          console.log(`   ⏭️  Skipped failed: ${skippedFailed} files`);
+        }
+        console.log(`   ⏱️  Total time: ${Math.floor(totalTime / 60)}m ${totalTime % 60}s\n`);
+
+        // Show sheets link
+        const sheetsUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+        console.log(`📋 View detailed progress: ${sheetsUrl}`);
+
+      } else {
+        // Dry-run mode - just show what would be uploaded
+        console.log('🔍 DRY-RUN MODE: Showing files that would be uploaded\n');
+
+        existingFiles.forEach((file: ChatFileInfo, index: number) => {
+          console.log(`[${index + 1}] ${file.fileName}`);
+          console.log(`    Size: ${(file.actualSize! / 1024 / 1024).toFixed(1)} MB`);
+          console.log(`    Type: ${file.mediaType}`);
+          console.log(`    Date: ${file.messageTimestamp.toLocaleDateString()}`);
+          console.log(`    Path: ${file.filePath}`);
+          console.log();
+        });
+
+        console.log(`📊 Summary: ${existingFiles.length} files would be uploaded`);
+        console.log('\nRemove --dry-run flag to perform actual upload.');
+      }
+
+    } catch (error) {
+      console.error('Upload failed:', (error as Error).message);
+      if ((error as Error).message.includes('Database not found')) {
+        console.log('\n💡 Tip: Run "npm run decrypt" to decrypt WhatsApp database first');
+      } else if ((error as Error).message.includes('Authentication')) {
+        console.log('\n💡 Tip: Run "npm run auth" to authenticate with Google services');
+      }
+      process.exit(1);
+    }
+  }
+
+  // AIDEV-NOTE: jid-validation; validates WhatsApp JID format for upload command
+  private isValidJid(jid: string): boolean {
+    // WhatsApp JID patterns:
+    // Individual: phone@s.whatsapp.net
+    // Group: groupid@g.us
+    // Business: phone@c.us
+    const jidPattern = /^[\d\w\-]+@(s\.whatsapp\.net|g\.us|c\.us)$/;
+    return jidPattern.test(jid);
+  }
+
+  // AIDEV-NOTE: status-merge; merges upload status from Google Sheets with file info
+  private mergeUploadStatus(files: ChatFileInfo[], existingData: any[]): ChatFileInfo[] {
+    return files.map(file => {
+      const existing = existingData.find(e => e.messageId === file.messageId);
+      if (existing && existing.uploadStatus) {
+        file.uploadStatus = existing.uploadStatus.toLowerCase();
+      } else {
+        file.uploadStatus = 'pending';
+      }
+      return file;
+    });
   }
 
   run(): void {
