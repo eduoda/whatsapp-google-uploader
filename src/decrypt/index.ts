@@ -189,6 +189,50 @@ export class WhatsAppDecryptor {
     }
   }
 
+  async isAlreadyDecrypted(cryptFile: string, outputFile: string): Promise<boolean> {
+    // Check if output file exists and is from the same source
+    try {
+      const outputStats = await fs.stat(outputFile);
+      const cryptStats = await fs.stat(cryptFile);
+
+      // Check if decrypted file is newer than encrypted file
+      // This means the current backup was already decrypted
+      if (outputStats.mtime >= cryptStats.mtime) {
+        const sizeMB = (outputStats.size / 1024 / 1024).toFixed(1);
+        console.log(`\n✅ Most recent backup already decrypted!`);
+        console.log(`   File: msgstore.db (${sizeMB} MB)`);
+        console.log(`   Created: ${outputStats.mtime.toLocaleString()}`);
+        console.log(`   Source: ${path.basename(cryptFile)}\n`);
+        return true;
+      }
+    } catch {
+      // Output file doesn't exist
+    }
+    return false;
+  }
+
+  async cleanOldDecryptedFiles(): Promise<void> {
+    try {
+      const files = await fs.readdir(this.outputDir);
+      const dbFiles = files.filter(f => f.endsWith('.db') && f !== 'msgstore.db');
+
+      if (dbFiles.length > 0) {
+        console.log(`\n🧹 Cleaning up ${dbFiles.length} old decrypted database(s)...`);
+        for (const file of dbFiles) {
+          const filePath = path.join(this.outputDir, file);
+          try {
+            await fs.unlink(filePath);
+            console.log(`   Removed: ${file}`);
+          } catch (error) {
+            console.error(`   Failed to remove: ${file}`);
+          }
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be accessed
+    }
+  }
+
   async decrypt(): Promise<boolean> {
     console.log('🔓 WhatsApp Database Decryptor\n');
     console.log('================================\n');
@@ -214,16 +258,25 @@ export class WhatsAppDecryptor {
       await fs.mkdir(this.outputDir, { recursive: true });
     } catch {}
 
+    // Clean old decrypted files
+    await this.cleanOldDecryptedFiles();
+
     // Decrypt the most recent backup to msgstore.db
     const outputFile = path.join(this.outputDir, 'msgstore.db');
 
-    // Check if already decrypted
+    // Check if already decrypted from the same backup
+    if (await this.isAlreadyDecrypted(cryptFile, outputFile)) {
+      console.log('💡 No need to decrypt again - using existing file.\n');
+      return true;
+    }
+
+    // Check if an older decrypted file exists
     try {
       await fs.access(outputFile);
       const stats = await fs.stat(outputFile);
       const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
-      console.log(`\n⚠️  Decrypted database already exists: msgstore.db (${sizeMB} MB)`);
-      console.log('   Delete it first if you want to decrypt again.\n');
+      console.log(`\n⚠️  Found older decrypted database: msgstore.db (${sizeMB} MB)`);
+      console.log('   A newer backup is available for decryption.\n');
 
       const readline = require('readline');
       const rl = readline.createInterface({
@@ -232,13 +285,13 @@ export class WhatsAppDecryptor {
       });
 
       const answer = await new Promise<string>((resolve) => {
-        rl.question('Do you want to overwrite it? (y/N): ', resolve);
+        rl.question('Do you want to decrypt the newer backup? (Y/n): ', resolve);
       });
       rl.close();
 
-      if (answer.toLowerCase() !== 'y') {
-        console.log('Decryption cancelled.\n');
-        return true; // Return true since file exists
+      if (answer.toLowerCase() === 'n') {
+        console.log('Using existing decrypted database.\n');
+        return true;
       }
     } catch {
       // File doesn't exist, proceed
