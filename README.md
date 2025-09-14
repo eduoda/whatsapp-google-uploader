@@ -23,21 +23,21 @@
 - **Test Suite** - Functional tests with mock WhatsApp structure
 
 ### 🚧 Not Yet Implemented
-- **CLI Commands** - `scan`, `upload`, `status`, `logs` commands
-- **Upload Orchestration** - Batch upload with progress tracking
-- **Resume System** - Recovery from interrupted uploads
-- **Deduplication Check** - Skip already uploaded files
-- **Rate Limiting** - API quota management
-- **Progress UI** - Real-time upload progress display
+- **CLI Upload Command** - `upload` command to execute uploads
+- **Status Command** - `status` to show upload progress
+- **Logs Command** - `logs` to display activity logs
+- **Upload Progress UI** - Real-time upload progress display
 
 ### Current Status
 
-⚠️ **Development Phase** - Basic modules work individually but CLI is incomplete.
+⚠️ **Development Phase** - Core functionality works, finalizing CLI commands.
 
 Currently, you can:
 1. Authenticate with Google (via `auth` command)
-2. Run tests to verify Google APIs work
-3. Scan WhatsApp directories programmatically
+2. Setup environment configuration (via `setup` command)
+3. Check system configuration (via `check` command)
+4. **NEW: Scan WhatsApp media files (via `scan` command)** ✅
+5. Run tests to verify all modules work
 
 ## Quick Start
 
@@ -85,13 +85,16 @@ node dist/cli.js setup
 
 # Check configuration
 node dist/cli.js check
+
+# Scan WhatsApp media files
+node dist/cli.js scan                    # Scan default WhatsApp location
+node dist/cli.js scan /path/to/whatsapp  # Scan custom path
 ```
 
 ### Planned Commands (Not Yet Implemented)
 
 ```bash
 # These commands are NOT YET WORKING:
-node dist/cli.js scan                    # Will scan WhatsApp directories
 node dist/cli.js upload --chat="ChatName" # Will upload media from specific chat
 node dist/cli.js status                   # Will show upload progress
 node dist/cli.js logs                     # Will display activity logs
@@ -152,6 +155,30 @@ node dist/cli.js auth
 # 1. Open browser for Google login
 # 2. Save token to token.json
 # 3. Create Google Sheets database automatically
+```
+
+### Using the Scan Command
+
+```bash
+# Scan WhatsApp media files (auto-detect location)
+node dist/cli.js scan
+
+# Scan with custom WhatsApp path
+node dist/cli.js scan /path/to/WhatsApp
+
+# Example output:
+# WhatsApp Media Files:
+#
+# PHOTO: 20 files (15.3 MB)
+#   - IMG-20240101-WA0001.jpg (1.2 MB)
+#   - IMG-20240102-WA0002.jpg (0.8 MB)
+#   ... and 18 more
+#
+# VIDEO: 6 files (45.7 MB)
+#   - VID-20240210-WA0006.mp4 (12.3 MB)
+#   ... and 5 more
+#
+# Total: 26 files, 61.0 MB
 ```
 
 ### Development Commands
