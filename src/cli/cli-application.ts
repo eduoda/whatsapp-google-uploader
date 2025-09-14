@@ -712,9 +712,9 @@ export class CLIApplication {
   }
 
   // AIDEV-NOTE: status-merge; merges upload status from Google Sheets with file info
-  private mergeUploadStatus(files: ChatFileInfo[], existingData: any[]): ChatFileInfo[] {
+  private mergeUploadStatus(files: ChatFileInfo[], existingData: Map<string, any>): ChatFileInfo[] {
     return files.map(file => {
-      const existing = existingData.find(e => e.messageId === file.messageId);
+      const existing = existingData.get(file.messageId);
       if (existing && existing.uploadStatus) {
         file.uploadStatus = existing.uploadStatus.toLowerCase();
       } else {

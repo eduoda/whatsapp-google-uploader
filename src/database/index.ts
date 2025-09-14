@@ -1094,7 +1094,7 @@ export class SheetsDatabase {
    * @param spreadsheetId Spreadsheet ID to read from
    * @returns Map of messageId -> existing row data
    */
-  private async readExistingChatFiles(spreadsheetId: string): Promise<Map<string, any>> {
+  async readExistingChatFiles(spreadsheetId: string): Promise<Map<string, any>> {
     const existingData = new Map<string, any>();
 
     try {
