@@ -619,15 +619,24 @@ export class CLIApplication {
               mimeType: file.mimeType || 'application/octet-stream'
             };
 
-            // Upload single file
-            await uploaderManager.uploadFiles([fileUpload], { chatId: chatJid });
+            // Upload single file with chat organization (TASK-029)
+            await uploaderManager.uploadFiles([fileUpload], {
+              chatId: chatJid,
+              chatName: chatName // TASK-029: pass chat name for album/folder naming
+            });
 
-            // Update Google Sheets with success
+            // Update Google Sheets with success and organization info (TASK-029)
             file.uploadStatus = 'uploaded';
+            const organizationInfo = fileUpload.mimeType.startsWith('image/') || fileUpload.mimeType.startsWith('video/')
+              ? `WA_${chatName}_${chatJid}` // Photos album name
+              : `${chatName}_${chatJid}`;   // Drive folder name
+
             await sheetsDb.updateFileUploadStatus(chatJid, chatName, file.messageId, {
               uploadStatus: 'uploaded',
               uploadDate: new Date(),
-              fileLink: `https://photos.google.com/`, // Placeholder - actual link would come from upload response
+              fileLink: `https://photos.google.com/`, // Placeholder for now
+              directoryName: organizationInfo,
+              directoryLink: undefined, // Will be updated later when we have album/folder links
               uploadError: undefined
             });
 
