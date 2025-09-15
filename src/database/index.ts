@@ -843,11 +843,11 @@ export class SheetsDatabase {
         return;
       }
 
-      // Update album name (column Z) and ID stored in name field
+      // Update album name (column AA) and link (column AB)
       const actualRow = rowIndex + 1; // +1 because spreadsheet is 1-indexed
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.chatMetadataSpreadsheetId,
-        range: `${this.CHAT_METADATA_SHEET}!Z${actualRow}:AA${actualRow}`,
+        range: `${this.CHAT_METADATA_SHEET}!AA${actualRow}:AB${actualRow}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [[
@@ -888,11 +888,11 @@ export class SheetsDatabase {
         return;
       }
 
-      // Update folder name (column AB) and link (column AC)
+      // Update folder name (column AC) and link (column AD)
       const actualRow = rowIndex + 1; // +1 because spreadsheet is 1-indexed
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.chatMetadataSpreadsheetId,
-        range: `${this.CHAT_METADATA_SHEET}!AB${actualRow}:AC${actualRow}`,
+        range: `${this.CHAT_METADATA_SHEET}!AC${actualRow}:AD${actualRow}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [[
@@ -1265,17 +1265,22 @@ export class SheetsDatabase {
       const rows = response.data.values || [];
 
       // AIDEV-NOTE: Map existing data by messageId (column A, index 0)
+      // Column mapping after TASK-030 hash addition:
+      // A(0): messageId, B(1): fileName, C(2): mediaType, D(3): size
+      // E(4): hash, F(5): messageTimestamp, G(6): senderJid
+      // H(7): uploadStatus, I(8): uploadDate, J(9): fileDeletedFromPhone
+      // K(10): uploadError, L(11): uploadAttempts, M(12): fileLink
       rows.forEach(row => {
         if (row[0]) { // messageId
           existingData.set(row[0], {
-            // Preserve file hash and upload tracking columns (E and H-M, indices 4 and 7-12)
-            fileHash: row[4] || '', // E: hash do arquivo (TASK-030)
-            uploadStatus: row[7] || 'pending', // H: status do upload
-            uploadDate: row[8] || '', // I: data do upload
-            fileDeletedFromPhone: row[9] === 'true' || row[9] === true, // J: arquivo deletado do celular
-            uploadError: row[10] || '', // K: ultima mensagem de erro
-            uploadAttempts: parseInt(row[11]) || 0, // L: tentativas de upload
-            fileLink: row[12] || '' // M: link do arquivo/midia
+            // Preserve file hash and upload tracking columns
+            fileHash: row[4] || '', // E: hash do arquivo (index 4)
+            uploadStatus: row[7] || 'pending', // H: status do upload (index 7)
+            uploadDate: row[8] || '', // I: data do upload (index 8)
+            fileDeletedFromPhone: row[9] === 'true' || row[9] === true, // J: arquivo deletado (index 9)
+            uploadError: row[10] || '', // K: ultima mensagem de erro (index 10)
+            uploadAttempts: parseInt(row[11]) || 0, // L: tentativas de upload (index 11)
+            fileLink: row[12] || '' // M: link do arquivo/midia (index 12)
           });
         }
       });

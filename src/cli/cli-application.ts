@@ -293,7 +293,7 @@ export class CLIApplication {
           console.log(`Credentials file: ${hasCredentials ? '✓' : '✗'} credentials.json`);
 
           if (!hasCredentials) {
-            console.log('\nRun "whatsapp-uploader setup" to configure');
+            console.log('\nRun "node dist/cli.js setup" to configure');
             process.exit(1);
           }
 
@@ -308,7 +308,7 @@ export class CLIApplication {
           console.log(`Authentication: ${isAuth ? '✓' : '✗'} ${isAuth ? 'Valid token' : 'Not authenticated'}`);
 
           if (!isAuth) {
-            console.log('\nRun "whatsapp-uploader auth" to authenticate');
+            console.log('\nRun "node dist/cli.js auth" to authenticate');
             process.exit(1);
           }
 
@@ -350,7 +350,7 @@ export class CLIApplication {
               console.log('\nTips:');
               console.log('- Make sure WhatsApp is installed');
               console.log('- Try specifying custom path: scan /path/to/whatsapp');
-              console.log('- Use "whatsapp-uploader check" to verify configuration');
+              console.log('- Use "node dist/cli.js check" to verify configuration');
             }
             return;
           }
@@ -408,7 +408,7 @@ export class CLIApplication {
 
                 if (!googleApis.isAuthenticated()) {
                   console.log('⚠️  Authentication required for Google Sheets saving.');
-                  console.log('   Run "whatsapp-uploader auth" first, or use --dry-run flag to skip.');
+                  console.log('   Run "node dist/cli.js auth" first, or use --dry-run flag to skip.');
                   return;
                 }
 
@@ -501,7 +501,7 @@ export class CLIApplication {
         console.log('- Chat has no media files');
         console.log('- Incorrect JID format');
         console.log('- Chat doesn\'t exist in msgstore.db');
-        console.log('\nTip: Use "npm run scan" first to see all available chats');
+        console.log('\nTip: Use "node dist/cli.js scan" first to see all available chats');
         return;
       }
 
@@ -537,7 +537,7 @@ export class CLIApplication {
 
         if (!googleApis.isAuthenticated()) {
           console.error('❌ Authentication required for uploads.');
-          console.log('\nRun "npm run auth" to authenticate with Google services first.');
+          console.log('\nRun "node dist/cli.js auth" to authenticate with Google services first.');
           process.exit(1);
         }
         console.log('✓ Authenticated with Google services\n');
@@ -625,7 +625,32 @@ export class CLIApplication {
         let failedCount = 0;
         const startTime = Date.now();
 
+        // Setup graceful shutdown handler to save state on interruption
+        let isShuttingDown = false;
+        const gracefulShutdown = async (signal: string) => {
+          if (isShuttingDown) return; // Prevent multiple shutdowns
+          isShuttingDown = true;
+
+          console.log(`\n⚠️  ${signal} received. Saving current state...`);
+
+          // Save current progress to sheets immediately
+          try {
+            await sheetsDb.saveChatFiles(chatJid, chatName, filesWithStatus);
+            console.log('✅ Upload state saved successfully');
+            console.log(`📊 Progress: ${uploadedCount} uploaded, ${failedCount} failed`);
+          } catch (error) {
+            console.error('❌ Failed to save state:', error);
+          }
+
+          process.exit(0);
+        };
+
+        // Register signal handlers
+        process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+        process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
         for (let i = 0; i < filesToUpload.length; i++) {
+          if (isShuttingDown) break; // Stop processing if shutting down
           const file = filesToUpload[i]!;
           const progress = Math.round(((i + 1) / filesToUpload.length) * 100);
 
@@ -682,10 +707,11 @@ export class CLIApplication {
                 chatGoogleInfo.folderId = result.folderId;
               }
 
-              // Update Google Sheets with success (TASK-029)
+              // Update Google Sheets with success IMMEDIATELY (no buffering for critical status)
               // AIDEV-NOTE: Album/folder info stored in main chats table, not individual sheets (TASK-023)
               file.uploadStatus = 'uploaded';
 
+              // CRITICAL: Save success status immediately to prevent re-upload on interruption
               await sheetsDb.updateFileUploadStatus(chatJid, chatName, file.messageId, {
                 uploadStatus: 'uploaded',
                 uploadDate: new Date(),
@@ -768,7 +794,7 @@ export class CLIApplication {
       if ((error as Error).message.includes('Database not found')) {
         console.log('\n💡 Tip: Run "npm run decrypt" to decrypt WhatsApp database first');
       } else if ((error as Error).message.includes('Authentication')) {
-        console.log('\n💡 Tip: Run "npm run auth" to authenticate with Google services');
+        console.log('\n💡 Tip: Run "node dist/cli.js auth" to authenticate with Google services');
       }
       process.exit(1);
     }

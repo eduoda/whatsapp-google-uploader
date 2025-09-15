@@ -442,18 +442,23 @@
   - [ ] No workarounds - legitimate testing only
   - [ ] KISS: Extend existing test.js, no complex test framework
 
-## [🔄] dwarf - TASK-030 - Add SHA-256 file hash column to per-chat Google Sheets **IN PROGRESS**
+## [✓] dwarf - TASK-030 - Add SHA-256 file hash column to per-chat Google Sheets **COMPLETED**
 - Priority: 2 (High - Duplicate Detection Enhancement)
 - Description: Add 'hash do arquivo' column to per-chat Google Sheets for proper duplicate detection. Calculate and save file hash when uploading. Check for duplicates by hash before uploading.
 - Started: 2025-09-14 (current session)
 - Worktree: TASK-030-dwarf
 - Branch: TASK-030-dwarf
 - Conflicts: None (independent enhancement)
-- **Files to modify**:
-  - src/database/index.ts - Add hash column to per-chat sheets structure
-  - src/chat-metadata/types.ts - Add fileHash field to ChatFileInfo interface
-  - src/cli/cli-application.ts - Calculate and use hash for duplicate detection
-- **KISS approach**: Just add the hash column and use it for duplicate detection
+- Completed: 2025-09-14 (current session)
+- **Implementation Summary**:
+  - ✅ Added fileHash field to ChatFileInfo interface
+  - ✅ Added 'hash do arquivo' column (E) to per-chat sheets with 13 total columns
+  - ✅ Updated all database methods to handle new column structure
+  - ✅ Added hash calculation and duplicate detection in CLI upload command
+  - ✅ Implemented content-based duplicate detection (same SHA-256 = skip)
+  - ✅ Updated column mappings: upload tracking now in columns H-M
+  - ✅ All tests pass, no breaking changes
+- **KISS approach**: Simple hash column addition with duplicate detection logic
 
 ---
 

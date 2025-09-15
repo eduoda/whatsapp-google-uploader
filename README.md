@@ -1,120 +1,53 @@
 # WhatsApp Google Uploader
 
-🚀 Simple CLI tool for uploading WhatsApp media to Google Photos and Google Drive.
+🚀 Production-ready CLI tool for uploading WhatsApp media to Google Photos and Google Drive with intelligent deduplication and quota management.
 
-## Features
-- **Smart File Routing** - Photos/videos → Album in Google Photos, Documents/audio → Directory in Google Drive
-- **Intuitive naming** - Album in Google Photos and directory in Google Drive have the same name the whatspp chat/group
-- **Zero-Copy Architecture** - Direct streaming without temporary files
-- **Auto-Resume System** - Interruption recovery with cloud-based progress tracking
-- **SHA-256 Deduplication** - Prevent duplicate uploads with Google Sheets database
-- **Cross-Platform** - Works on Windows, macOS, Linux, and Android 11+ (Termux)
-- **Cloud Storage** - Uses Google Sheets for all persistence (no local database needed)
-- **Rate Limiting** - Respectful API usage with exponential backoff
+## ✨ Features
 
-## Modules/libs
-### ✅ Implemented
-- **Google OAuth Authentication** - Desktop app authentication flow
-- **Google Photos Upload** - Upload photos/videos with album support
-- **Google Drive Upload** - Upload documents and other files to folders
-- **WhatsApp Directory Scanning** - Find and categorize media files
-- **Google Sheets Database** - Track uploaded files with SHA-256 hashes
-- **File Categorization** - Smart routing (photos → Photos, docs → Drive)
-- **Test Suite** - Functional tests with mock WhatsApp structure
+### Core Functionality
+- **📱 Smart File Routing** - Photos/videos → Google Photos albums, Documents/audio → Google Drive folders
+- **🏷️ Intuitive Naming** - Albums and folders named after WhatsApp chat/group names
+- **🔄 Chat-Specific Uploads** - Upload media from specific chats with dedicated tracking sheets
+- **🔒 SHA-256 Deduplication** - Prevents duplicate uploads using content hashing
+- **📊 Per-Chat Tracking** - Individual Google Sheets for each chat with full upload history
 
-### 🚧 Not Yet Implemented
-- **CLI Upload Command** - `upload` command to execute uploads
-- **Status Command** - `status` to show upload progress
-- **Logs Command** - `logs` to display activity logs
-- **Upload Progress UI** - Real-time upload progress display
+### Technical Excellence
+- **⚡ Zero-Copy Architecture** - Direct streaming without temporary files
+- **🛡️ Graceful Shutdown** - Saves state on Ctrl+C, resumes from exact point
+- **🎯 Adaptive Rate Limiting** - Smart quota management with exponential backoff
+- **☁️ Cloud-Based Persistence** - Google Sheets as database (no local storage needed)
+- **🔄 Auto-Resume System** - Automatic recovery from interruptions
+- **🌍 Cross-Platform** - Windows, macOS, Linux, and Android 11+ (Termux)
 
-### Current Status
+## 📦 Installation
 
-⚠️ **Development Phase** - Core functionality works, finalizing CLI commands.
-
-Currently, you can:
-1. Authenticate with Google (via `auth` command)
-2. Setup environment configuration (via `setup` command)
-3. Check system configuration (via `check` command)
-4. **NEW: Scan WhatsApp media files (via `scan` command)** ✅
-5. Run tests to verify all modules work
-
-## Quick Start
-
-### Installation - Windows/macOS/Linux
+### Desktop (Windows/macOS/Linux)
 ```bash
-# Install Node.js from nodejs.org or package manager
-# Clone and build from source (npm package not yet published)
+# Clone repository
 git clone https://github.com/eduoda/whatsapp-google-uploader.git
 cd whatsapp-google-uploader
+
+# Install dependencies and build
 npm install --production
 npm run build
 ```
 
-### Installation - Termux (Android)
-
+### Android (Termux)
 ```bash
-# 1. Clone the repository
-git clone https://github.com/eduoda/whatsapp-google-uploader.git
-cd whatsapp-google-uploader
-
-# 2. Run setup script
-bash scripts/setup-termux.sh
-OR
-# 2.1 Manually install in Termux
+# Setup Termux environment
 pkg update && pkg install nodejs
-termux-setup-storage # Accept the permission on Android
+termux-setup-storage  # Grant storage permission
 
-# 3. Install production dependencies
+# Clone and build
+git clone https://github.com/eduoda/whatsapp-google-uploader.git
+cd whatsapp-google-uploader
 npm install --production
-
-# 4. Build and run
 npm run build
-node dist/cli.js scan
 ```
 
+## 🚀 Quick Start
 
-### Available Commands (Currently Working)
-
-```bash
-# Authenticate with Google
-node dist/cli.js auth
-
-# Setup environment (creates .env file)
-node dist/cli.js setup
-
-# Check configuration
-node dist/cli.js check
-
-# Scan WhatsApp media files
-node dist/cli.js scan                    # Scan default WhatsApp location
-node dist/cli.js scan /path/to/whatsapp  # Scan custom path
-
-# Decrypt WhatsApp database (NEW - requires wa-crypt-tools)
-npm run decrypt                           # Decrypt .crypt15 files (auto-detect path)
-npm run decrypt -- /path/to/whatsapp     # Decrypt with custom WhatsApp path
-```
-
-### Planned Commands (Not Yet Implemented)
-
-```bash
-# These commands are NOT YET WORKING:
-node dist/cli.js upload --chat="ChatName" # Will upload media from specific chat
-node dist/cli.js status                   # Will show upload progress
-node dist/cli.js logs                     # Will display activity logs
-```
-
-## Development
-
-### Prerequisites
-
-- Node.js 14+ (18+ recommended)
-- npm 6+
-- Google Account with API access
-
-### Setup
-
-#### 1. Get Google Credentials
+### 1. Get Google Credentials
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create or select a project
@@ -122,152 +55,202 @@ node dist/cli.js logs                     # Will display activity logs
    - Google Drive API
    - Google Photos Library API
    - Google Sheets API
-4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
-5. **IMPORTANT**: Choose **"Desktop app"** as application type (NOT "Web application")
-6. Name it "WhatsApp Uploader" or similar
-7. Download JSON → Save as `credentials.json` in project root
+4. Create credentials: "OAuth 2.0 Client ID"
+5. **IMPORTANT**: Choose **"Desktop app"** as application type
+6. Download JSON → Save as `credentials.json` in project root
 
-
-#### 2. Build from Source
-
+### 2. Authenticate
 ```bash
-# Clone repository
-git clone https://github.com/eduoda/whatsapp-google-uploader.git
-cd whatsapp-google-uploader
-
-# Install dependencies
-npm install --production  # For users (no dev dependencies)
-npm install              # For developers
-
-# Build project
-npm run build
-
-# Run tests (see Testing section for details)
-npm test                 # Run all functional tests
-```
-
-### First Run and Authentication
-
-```bash
-# Build the project
-npm run build
-
-# Run authentication (will open browser)
 node dist/cli.js auth
-
-# This will:
-# 1. Open browser for Google login
-# 2. Save token to token.json
-# 3. Create Google Sheets database automatically
+# Opens browser for Google login
+# Creates Google Sheets database automatically
 ```
 
-### Using the Scan Command
-
+### 3. Decrypt WhatsApp Database
 ```bash
-# Scan WhatsApp media files (auto-detect location)
-node dist/cli.js scan
+# Install wa-crypt-tools
+pip install wa-crypt-tools
 
-# Scan with custom WhatsApp path
-node dist/cli.js scan /path/to/WhatsApp
+# Add backup key to .env
+echo "WHATSAPP_BACKUP_KEY=your-64-character-hex-key" >> .env
 
-# Example output:
-# WhatsApp Media Files:
-#
-# PHOTO: 20 files (15.3 MB)
-#   - IMG-20240101-WA0001.jpg (1.2 MB)
-#   - IMG-20240102-WA0002.jpg (0.8 MB)
-#   ... and 18 more
-#
-# VIDEO: 6 files (45.7 MB)
-#   - VID-20240210-WA0006.mp4 (12.3 MB)
-#   ... and 5 more
-#
-# Total: 26 files, 61.0 MB
-```
-
-### Decrypting WhatsApp Databases (Optional)
-
-For advanced features like chat-specific uploads, you can decrypt WhatsApp databases:
-
-#### Prerequisites:
-1. Install wa-crypt-tools: `pip install wa-crypt-tools`
-2. Get your 64-character backup key from WhatsApp:
-   - Settings → Chats → Chat Backup → End-to-end encrypted backup
-3. Add key to .env: `WHATSAPP_BACKUP_KEY=your-64-character-hex-key`
-
-#### Usage:
-```bash
-# Auto-detect WhatsApp path
+# Decrypt database
 npm run decrypt
-
-# Or specify custom path
-npm run decrypt -- /path/to/WhatsApp
-
-# Example with test data
-npm run decrypt -- tests/mock-whatsapp/Android/media/com.whatsapp/WhatsApp
-
-# Output: decrypted/msgstore.db (SQLite database with chat data)
 ```
 
-### Development Commands
+### 4. Upload Media
+```bash
+# Upload from specific chat
+node dist/cli.js upload "Family Group"
+
+# Upload with options
+node dist/cli.js upload "Work Chat" --skip-failed --dry-run
+```
+
+## 📖 Commands
+
+### Core Commands
+
+#### `auth` - Authenticate with Google
+```bash
+node dist/cli.js auth
+```
+Opens browser for Google authentication and saves tokens.
+
+#### `scan` - Scan WhatsApp Media
+```bash
+node dist/cli.js scan                    # Auto-detect location
+node dist/cli.js scan /path/to/whatsapp  # Custom path
+node dist/cli.js scan --dry-run          # Without saving to Sheets
+```
+Analyzes WhatsApp directory and saves chat metadata to Google Sheets.
+
+#### `upload` - Upload Media to Google
+```bash
+node dist/cli.js upload "Chat Name"      # Upload from specific chat
+node dist/cli.js upload "Chat Name" --skip-failed  # Skip previously failed files
+node dist/cli.js upload "Chat Name" --dry-run      # Preview what would be uploaded
+```
+
+**Upload Features:**
+- Creates dedicated Google Sheets for each chat
+- Tracks upload status per file (pending/uploaded/failed)
+- Calculates SHA-256 hashes for deduplication
+- Creates Google Photos album and Drive folder per chat
+- Adaptive delay to respect API quotas
+- Graceful shutdown saves progress on Ctrl+C
+
+#### `decrypt` - Decrypt WhatsApp Database
+```bash
+npm run decrypt                           # Auto-detect path
+npm run decrypt -- /path/to/whatsapp     # Custom path
+npm run decrypt -- --key 0A1B2C3D...     # Direct hex key (64 chars)
+```
+
+### Utility Commands
+
+#### `check` - Verify Configuration
+```bash
+node dist/cli.js check
+```
+
+#### `setup` - Create Environment File
+```bash
+node dist/cli.js setup
+```
+
+## 🏗️ Architecture
+
+### Google Sheets Structure
+
+#### Main Sheet: `WhatsApp-Media-Tracker-YYYY-MM-DD`
+```
+┌─────────────────┬──────────────┬───┬─────────────┬─────────────────┐
+│ Nome do Chat    │ ID WhatsApp  │...│ Total Files │ Album/Folder ID │
+├─────────────────┼──────────────┼───┼─────────────┼─────────────────┤
+│ Family Group    │ 123@g.us     │...│ 1,234       │ album_xyz       │
+│ Work Team       │ 456@g.us     │...│ 567         │ folder_abc      │
+└─────────────────┴──────────────┴───┴─────────────┴─────────────────┘
+```
+
+#### Per-Chat Sheet: `[Chat-Name]_[JID]`
+```
+┌────────────┬─────────────┬──────────────┬───┬────────────────────┐
+│ Message ID │ File Name   │ SHA-256 Hash │...│ Upload Status      │
+├────────────┼─────────────┼──────────────┼───┼────────────────────┤
+│ msg_001    │ IMG001.jpg  │ a1b2c3d4...  │...│ uploaded           │
+│ msg_002    │ VID001.mp4  │ e5f6g7h8...  │...│ pending            │
+│ msg_003    │ IMG002.jpg  │ a1b2c3d4...  │...│ skipped (duplicate)│
+└────────────┴─────────────┴──────────────┴───┴────────────────────┘
+```
+
+### Quota Management
+
+The system implements adaptive delay between uploads:
+- **Initial delay**: 1.5 seconds
+- **On success**: Gradually reduces delay (min 1s)
+- **On quota error**: Exponential backoff (up to 60s)
+- **Batch updates**: Progress updates every 5 seconds
+- **Critical updates**: Success/failure saved immediately
+
+### Deduplication System
+
+1. **SHA-256 hashing** of file content before upload
+2. **Hash stored** in Google Sheets for each file
+3. **Duplicate detection** across different messages
+4. **Skip upload** if same hash already uploaded
+
+## ⚠️ Known Limitations
+
+### API Limitations
+- **Google Photos API**: Does not provide checksums for integrity verification
+- **Google Drive API**: Provides MD5 but not currently used for verification
+- **Quota Limits**:
+  - Google Sheets: 60 requests/minute/user
+  - Google Photos: Variable rate limits
+  - Google Drive: Similar per-minute quotas
+
+### Google Sheets Restrictions
+**DO NOT manually:**
+- ❌ Reorder rows (breaks position-based updates)
+- ❌ Delete or move columns (breaks index-based reading)
+- ❌ Insert columns in the middle (shifts indices)
+
+**Safe to do:**
+- ✅ Apply filters and sorting views
+- ✅ Hide rows or columns
+- ✅ Add columns at the end
+- ✅ Format cells (colors, fonts)
+
+## 🧪 Testing
 
 ```bash
-# Build TypeScript
-npm run build              # Build once
-npm run dev                # Build and watch
+# Run tests with mock data (no uploads)
+npm test
 
-# Clean build
+# Run tests with actual uploads
+npm run test:live
+
+# Test with custom WhatsApp directory
+node tests/test.js /path/to/whatsapp
+```
+
+## 📝 Recent Updates
+
+### Version 1.0.0 (Current)
+- ✅ **TASK-023**: Chat-specific upload with dedicated tracking sheets
+- ✅ **TASK-030**: SHA-256 deduplication system
+- ✅ Adaptive rate limiting for quota management
+- ✅ Graceful shutdown with state persistence
+- ✅ Fixed column index issues in Google Sheets updates
+- ✅ Immediate persistence for critical operations
+- ✅ Smart batch updates for progress tracking
+
+## 🛠️ Development
+
+### Project Structure
+```
+whatsapp-google-uploader/
+├── src/
+│   ├── cli/               # CLI commands and application
+│   ├── scanner/           # WhatsApp directory scanner
+│   ├── google-apis/       # Google Photos/Drive/Sheets APIs
+│   ├── database/          # Google Sheets database layer
+│   ├── uploader/          # Upload manager with deduplication
+│   ├── chat-metadata/     # Chat analysis and metadata
+│   └── decrypt/           # WhatsApp database decryption
+├── tests/                 # Test suite with mock data
+├── memory-system/         # Development documentation
+└── credentials.json       # Google OAuth credentials
+```
+
+### Build Commands
+```bash
+npm run build              # Build TypeScript
+npm run dev                # Build and watch
 npm run clean              # Remove dist folder
 ```
 
+## 📄 License
 
-## Configuration
-
-### Google Sheets Database
-The system automatically creates a Google Sheets database on first run:
-- Spreadsheet: `WhatsApp-Uploader-Database`
-- Sheet 1: `uploaded_files` - Tracks uploaded files with SHA-256 hashes
-- Sheet 2: `upload_progress` - Tracks progress per chat
-
-### OAuth Token
-After first authentication, token is saved to `token.json` for future use.
-
-
-## Testing
-
-### Running Tests
-
-Simple functional test that verifies real production code.
-
-```bash
-# Run test with dry-run (builds first, no uploads)
-npm test
-
-# Run test with actual uploads (builds first, requires authentication)
-npm run test:live
-
-# Run test directly with custom WhatsApp directory (no build)
-node tests/test.js /path/to/whatsapp
-
-# Run test directly with dry-run and custom directory (no build)
-node tests/test.js --dry-run /path/to/whatsapp
-```
-
-### Test Features
-
-The test verifies:
-1. **Scanner**: Finds media files in WhatsApp directories
-2. **Google APIs**: Initializes with credentials
-3. **Album Creation**: Creates albums in Google Photos (live mode)
-4. **Photo Upload**: Uploads photos to Google Photos (live mode)
-5. **Album Management**: Adds photos to albums (live mode)
-
-### Mock WhatsApp Directory
-
-The project includes scripts to create a mock WhatsApp directory structure for testing:
-
-To test with the mock structure:
-```bash
-# Run test with mock WhatsApp directory
-node tests/test.js tests/mock-whatsapp
-```
+MIT License - See LICENSE file for details

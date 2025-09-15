@@ -87,9 +87,10 @@ export class GoogleApis {
   getAuthUrl(): string {
     const scopes = this.config.scopes || [
       'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/photoslibrary.appendonly'
+      'https://www.googleapis.com/auth/photoslibrary.appendonly',
+      'https://www.googleapis.com/auth/spreadsheets'
     ];
-    
+
     return this.auth.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
@@ -303,8 +304,8 @@ export class GoogleApis {
       const albumName = `WA_${metadata.chatName}_${metadata.chatJid}`;
 
       try {
-        // Create or find album
-        const albumId = await this.createOrFindAlbum(albumName);
+        // AIDEV-NOTE: Pass existing album ID from metadata if available (from sheets database)
+        const albumId = await this.createOrFindAlbum(albumName, metadata.existingAlbumId);
 
         // Add media item to album
         await this.addToAlbum(albumId, [uploadResult.id]);
@@ -312,6 +313,7 @@ export class GoogleApis {
         // Update result with album information
         uploadResult.albumName = albumName;
         uploadResult.albumId = albumId;
+        uploadResult.albumUrl = `https://photos.google.com/album/${albumId}`;
 
       } catch (albumError) {
         console.warn(`Warning: Failed to add to album ${albumName}:`, albumError);
@@ -333,16 +335,22 @@ export class GoogleApis {
     if (metadata?.chatName && metadata?.chatJid) {
       const folderName = `${metadata.chatName}_${metadata.chatJid}`;
 
-      try {
-        // Create or find "WhatsApp Google Uploader" root folder
-        const rootFolderId = await this.createOrFindFolder('WhatsApp Google Uploader');
+      // AIDEV-NOTE: Use existing folder ID from database if available
+      if (metadata.existingFolderId) {
+        parentFolderId = metadata.existingFolderId;
+        console.log(`Using folder from database: ${folderName} (ID: ${parentFolderId})`);
+      } else {
+        try {
+          // Create or find "WhatsApp Google Uploader" root folder
+          const rootFolderId = await this.createOrFindFolder('WhatsApp Google Uploader');
 
-        // Create or find chat-specific folder inside root
-        parentFolderId = await this.createOrFindFolder(folderName, rootFolderId);
+          // Create or find chat-specific folder inside root
+          parentFolderId = await this.createOrFindFolder(folderName, rootFolderId);
 
-      } catch (folderError) {
-        console.warn(`Warning: Failed to create folder structure:`, folderError);
-        // Continue without folder organization
+        } catch (folderError) {
+          console.warn(`Warning: Failed to create folder structure:`, folderError);
+          // Continue without folder organization
+        }
       }
     }
 
@@ -358,6 +366,7 @@ export class GoogleApis {
     if (parentFolderId && metadata?.chatName && metadata?.chatJid) {
       uploadResult.folderName = `${metadata.chatName}_${metadata.chatJid}`;
       uploadResult.folderId = parentFolderId;
+      uploadResult.folderUrl = `https://drive.google.com/drive/folders/${parentFolderId}`;
     }
 
     return uploadResult;
@@ -367,8 +376,15 @@ export class GoogleApis {
    * Create album or find existing album by title
    * AIDEV-NOTE: album-create-or-find; KISS implementation to avoid duplicate albums
    */
-  private async createOrFindAlbum(title: string): Promise<string> {
+  private async createOrFindAlbum(title: string, existingAlbumId?: string): Promise<string> {
     await this.ensureAuthenticated();
+
+    // AIDEV-NOTE: Check if album ID was passed from sheets database
+    if (existingAlbumId) {
+      console.log(`Using album from database: ${title} (ID: ${existingAlbumId})`);
+      this.albumCache.set(title, existingAlbumId);
+      return existingAlbumId;
+    }
 
     // Check cache first
     if (this.albumCache.has(title)) {
@@ -377,50 +393,46 @@ export class GoogleApis {
       return cachedId;
     }
 
-    // Try to find existing album first with pagination support
+    // AIDEV-NOTE: appendonly-limitation; with photoslibrary.appendonly scope, we can only list albums created by this app
+    // The API will return 403 for user's other albums, but this is expected behavior, not an error
     try {
-      let pageToken: string | undefined;
-      let allAlbums: any[] = [];
-
-      // Search through all pages of albums (Google Photos paginates results)
-      do {
-        const params: any = {
-          pageSize: 50 // Max allowed by API
-        };
-
-        if (pageToken) {
-          params.pageToken = pageToken;
-        }
-
-        const searchResponse = await axios.get(
-          'https://photoslibrary.googleapis.com/v1/albums',
-          {
-            headers: {
-              'Authorization': `Bearer ${this.auth.credentials.access_token}`,
-              'Content-Type': 'application/json'
-            },
-            params
+      const searchResponse = await axios.get(
+        'https://photoslibrary.googleapis.com/v1/albums',
+        {
+          headers: {
+            'Authorization': `Bearer ${this.auth.credentials.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          params: {
+            pageSize: 50  // Check first 50 app-created albums
           }
-        );
-
-        const albums = searchResponse.data.albums || [];
-        allAlbums = allAlbums.concat(albums);
-
-        // Check current page for matching album
-        const existingAlbum = albums.find((album: any) => album.title === title);
-        if (existingAlbum) {
-          console.log(`Found existing album: ${title} (ID: ${existingAlbum.id})`);
-          this.albumCache.set(title, existingAlbum.id); // Cache the album ID
-          return existingAlbum.id;
         }
+      );
 
-        pageToken = searchResponse.data.nextPageToken;
-      } while (pageToken);
+      const albums = searchResponse.data.albums || [];
 
-      console.log(`Album '${title}' not found among ${allAlbums.length} albums, creating new one`);
-    } catch (searchError) {
-      console.error('Error searching for albums:', (searchError as any).response?.data || (searchError as Error).message);
-      console.warn('Warning: Could not search for existing albums, creating new one');
+      // Look for existing album created by this app
+      const existingAlbum = albums.find((album: any) => album.title === title);
+      if (existingAlbum) {
+        console.log(`Found existing app-created album: ${title} (ID: ${existingAlbum.id})`);
+        this.albumCache.set(title, existingAlbum.id);
+        return existingAlbum.id;
+      }
+
+      console.log(`Album '${title}' not found among ${albums.length} app-created albums`);
+    } catch (searchError: any) {
+      // Expected behavior with appendonly scope - can't list all user albums, only app-created ones
+      if (searchError.response?.status === 403) {
+        // This is normal - the API returns 403 when trying to list all albums with appendonly scope
+        // We can still create albums and list the ones created by this app
+        console.log('Note: Limited to app-created albums (expected with appendonly scope)');
+      } else if (searchError.response?.status === 429) {
+        // Rate limit error - this is the real quota issue
+        console.error('Rate limit exceeded (429). Please wait before retrying.');
+        throw searchError; // Re-throw to stop processing
+      } else {
+        console.warn('Could not search for albums:', searchError.response?.data?.error?.message || searchError.message);
+      }
     }
 
     // Create new album if not found

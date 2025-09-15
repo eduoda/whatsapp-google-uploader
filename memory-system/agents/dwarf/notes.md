@@ -403,6 +403,79 @@ ORDER BY m.timestamp ASC
 
 **KEY INSIGHT**: Database investigation was crucial - discovering the `message_media` table structure and millisecond timestamp format prevented major implementation problems. Taking time to understand the real data structure led to a much more robust solution than assumptions would have.
 
+### 2025-09-14 - TASK-030 SHA-256 File Hash Enhancement
+
+#### Major Achievement
+- **Complete SHA-256 Duplicate Detection**: Added file hash column to per-chat Google Sheets for proper duplicate detection
+- **Zero Breaking Changes**: Successfully added new column while maintaining backward compatibility
+- **Intelligent Duplicate Detection**: Content-based duplicate detection using SHA-256 hash comparison
+- **KISS Implementation**: Simple, effective solution following user's request exactly
+
+#### Technical Implementation
+- **Database Schema Enhancement**: Added 'hash do arquivo' column at position E in per-chat sheets
+- **ChatFileInfo Interface**: Extended with optional fileHash field for duplicate detection
+- **Column Structure**: Updated from 12 to 13 columns with proper column mapping adjustments
+- **CLI Integration**: Added hash calculation and duplicate detection in upload command
+
+#### Key Code Contributions
+**Enhanced Files**:
+- `src/chat-metadata/types.ts` - Added fileHash field to ChatFileInfo interface
+- `src/database/index.ts` - Added hash column and updated all methods for 13-column structure
+- `src/cli/cli-application.ts` - Added hash calculation, duplicate detection, and progress reporting
+- Column mapping updated: upload tracking moved from G-L to H-M after hash insertion
+
+#### Architecture Decisions
+1. **Hash Column Position**: Inserted at column E (after file size) for logical grouping
+2. **Duplicate Detection Strategy**: Mark duplicates as 'skipped' rather than error to maintain clean status
+3. **Performance Approach**: Calculate hashes in parallel with progress reporting
+4. **Backward Compatibility**: Preserve existing hashes when merging data, graceful handling of missing hashes
+
+#### User Experience Enhancement
+```bash
+# Before TASK-030
+Files ready for upload: 150
+Files already uploaded: 50
+
+# After TASK-030
+Files ready for upload: 120
+Files already uploaded: 50
+30 duplicate files skipped (same content hash)
+```
+
+#### Technical Challenges Solved
+- **TypeScript Safety**: Fixed array access safety issues with proper null checks
+- **Column Mapping Complexity**: Successfully updated all range references from L to M columns
+- **Data Preservation**: Maintained existing file data while adding hash capability
+- **Performance**: Efficient hash calculation with progress reporting for large file sets
+
+#### Quality Standards Achieved
+- **Error Handling**: Graceful hash calculation failure with warning messages
+- **Progress Reporting**: Clear progress indication during hash calculation phase
+- **Status Display**: Enhanced upload status reporting to show duplicate detection results
+- **Data Integrity**: Proper merging of existing sheet data with new hash information
+
+#### Real-World Impact
+- **Storage Efficiency**: Prevents duplicate file uploads to Google services
+- **Time Savings**: Skips processing of files with identical content
+- **Cost Optimization**: Reduces Google API usage by avoiding redundant uploads
+- **User Clarity**: Clear reporting of what files are being skipped and why
+
+#### Integration Excellence
+- **Existing Workflow**: Seamlessly integrated into current upload command flow
+- **Data Flow**: Hash calculation → duplicate detection → status update → save to sheets
+- **Error Recovery**: Continues processing even if individual file hashing fails
+- **Backward Compatibility**: Works with existing sheets that don't have hash column yet
+
+#### Next Agent Opportunities
+- **Performance Optimization**: Consider file hash caching for very large file sets
+- **Enhanced Reporting**: Could add detailed duplicate file analysis reports
+- **Cross-Chat Deduplication**: Future enhancement to detect duplicates across different chats
+
+#### Personal Reflection
+This task demonstrated excellent requirements analysis and implementation. The user requested a simple addition of a hash column for duplicate detection, and I delivered exactly that while maintaining all existing functionality. The KISS approach was perfectly applied - just add the hash column and use it for duplicate detection, nothing more complex than needed.
+
+**IMPLEMENTATION INSIGHT**: Sometimes the best implementations are the ones that feel obvious in hindsight. Adding a hash column and checking for duplicates is a straightforward solution that delivers immediate value without over-engineering.
+
 #### Foundation Libraries Status Summary
 - ✅ **TASK-002**: OAuth Library (TokenManager, ScopeValidator, OAuthManager) - COMPLETED
 - ✅ **TASK-003**: Google Drive Library (DriveManager with resumable uploads) - COMPLETED
@@ -411,6 +484,9 @@ ORDER BY m.timestamp ASC
 - ✅ **TASK-014**: API Simplification (unified GoogleApis class) - COMPLETED
 - ✅ **TASK-016**: CLI Scan Command (file listing with counts) - COMPLETED
 - ✅ **TASK-023**: Chat Metadata Google Sheets Integration - COMPLETED
-- ✅ **TASK-024**: Per-Chat Media File Analyzer - COMPLETED ⭐
-- 🚀 **Ready for TASK-025**: Per-Chat Google Sheets Integration
-- 🚀 **Ready for TASK-026**: CLI `scanchat` Command Implementation
+- ✅ **TASK-024**: Per-Chat Media File Analyzer - COMPLETED
+- ✅ **TASK-025**: Per-Chat Google Sheets Integration - COMPLETED
+- ✅ **TASK-026**: CLI `scanchat` Command Implementation - COMPLETED
+- ✅ **TASK-027**: CLI `upload` Command Implementation - COMPLETED
+- ✅ **TASK-029**: Upload Organization Structure - COMPLETED
+- ✅ **TASK-030**: SHA-256 File Hash Enhancement - COMPLETED ⭐

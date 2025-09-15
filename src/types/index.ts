@@ -24,10 +24,12 @@ export interface UploadResult {
   size?: number;
   createdTime?: string;
   // Organization information (TASK-029)
-  albumName?: string; // For Photos uploads
-  albumId?: string;   // For Photos uploads
+  albumName?: string;  // For Photos uploads
+  albumId?: string;    // For Photos uploads
+  albumUrl?: string;   // For Photos album link (TASK-023)
   folderName?: string; // For Drive uploads
   folderId?: string;   // For Drive uploads
+  folderUrl?: string;  // For Drive folder link (TASK-023)
 }
 
 // AIDEV-NOTE: upload-metadata; simplified metadata for uploads with chat organization support (TASK-029)
@@ -39,6 +41,8 @@ export interface UploadMetadata {
   // Chat organization metadata (TASK-029)
   chatName?: string; // Chat display name for album/folder creation
   chatJid?: string;  // Chat JID for album/folder creation
+  existingAlbumId?: string; // Existing Google Photos album ID from database
+  existingFolderId?: string; // Existing Google Drive folder ID from database
 }
 
 // AIDEV-NOTE: progress-callback; simple progress reporting

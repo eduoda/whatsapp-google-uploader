@@ -110,42 +110,23 @@ async function test() {
 
     // Test 5: CLI scan command - Test the actual CLI integration
     console.log('\nTesting CLI scan command...');
-    const { spawn } = require('child_process');
+    const { spawnSync } = require('child_process');
 
-    const cliScanTest = () => {
-      return new Promise((resolve, reject) => {
-        const child = spawn('node', ['dist/cli.js', 'scan', whatsappPath], {
-          stdio: ['pipe', 'pipe', 'pipe']
-        });
+    // Use --dry-run to skip authentication requirement
+    const { stdout: scanOutput, stderr: scanError, status: scanStatus } = spawnSync(
+      'node',
+      ['dist/cli.js', 'scan', whatsappPath, '--dry-run'],
+      { encoding: 'utf-8' }
+    );
 
-        let output = '';
-        let error = '';
-
-        child.stdout.on('data', (data) => {
-          output += data.toString();
-        });
-
-        child.stderr.on('data', (data) => {
-          error += data.toString();
-        });
-
-        child.on('close', (code) => {
-          if (code === 0 && output.includes('WhatsApp Media Files:') && output.includes('Total:')) {
-            console.log('CLI scan command: PASSED');
-            resolve();
-          } else {
-            console.log(`CLI scan command: FAILED (exit code: ${code})`);
-            console.log('Output:', output);
-            console.log('Error:', error);
-            reject(new Error(`CLI scan command failed with exit code: ${code}`));
-          }
-        });
-
-        child.on('error', reject);
-      });
-    };
-
-    await cliScanTest();
+    if (scanStatus === 0 && scanOutput.includes('WhatsApp Media Files Found:') && scanOutput.includes('Total:')) {
+      console.log('CLI scan command: PASSED');
+    } else {
+      console.log(`CLI scan command: FAILED (exit code: ${scanStatus})`);
+      console.log('Output:', scanOutput);
+      console.log('Error:', scanError);
+      throw new Error(`CLI scan command failed with exit code: ${scanStatus}`);
+    }
 
     console.log('\n✓ All tests passed (including CLI scan command)');
     return 0;

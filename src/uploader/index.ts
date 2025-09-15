@@ -10,11 +10,15 @@ import * as crypto from 'crypto';
 import { createReadStream } from 'fs';
 import { GoogleApis, GoogleApisConfig } from '../google-apis';
 import { SheetsDatabase, FileRecord, ProgressRecord } from '../database/index';
+import { UploadResult } from '../types';
 
 export interface UploaderConfig extends GoogleApisConfig {
   rateLimit?: {
     maxConcurrent?: number;
     requestsPerSecond?: number;
+    adaptiveDelay?: boolean; // Enable adaptive delay for quota management
+    initialDelayMs?: number; // Initial delay between uploads (default: 1000ms)
+    maxDelayMs?: number; // Maximum delay when backing off (default: 30000ms)
   };
 }
 
@@ -36,10 +40,14 @@ export class UploaderManager {
   private db!: SheetsDatabase; // Will be initialized in initialize()
   private googleApis: GoogleApis;
   private config: UploaderConfig;
-  
+  private currentDelayMs: number = 1000; // Current adaptive delay
+  private quotaErrorCount: number = 0; // Track consecutive quota errors
+
   constructor(config: UploaderConfig) {
     this.config = config;
     this.googleApis = new GoogleApis(config);
+    // Initialize adaptive delay settings
+    this.currentDelayMs = config.rateLimit?.initialDelayMs || 1000;
     // Initialize with the OAuth client from GoogleApis after auth
   }
   
@@ -53,15 +61,15 @@ export class UploaderManager {
     await this.db.initialize();
   }
   
-  async uploadFiles(files: FileUpload[], options: UploadOptions): Promise<void> {
+  async uploadFiles(files: FileUpload[], options: UploadOptions): Promise<UploadResult[]> {
     const chatId = options.chatId || 'default';
-    
+
     // Check authentication
     if (!this.googleApis.isAuthenticated()) {
       throw new Error('Not authenticated. Please authenticate with Google APIs first.');
     }
-    
-    // Update initial progress
+
+    // Update initial progress ONLY ONCE at the start
     await this.db.updateProgress({
       chatId,
       lastProcessedFile: '',
@@ -70,9 +78,12 @@ export class UploaderManager {
       status: 'active',
       lastUpdated: new Date().toISOString()
     });
-    
+
     let processedCount = 0;
-    
+    const results: UploadResult[] = [];
+    let lastProgressUpdate = Date.now();
+    const PROGRESS_UPDATE_INTERVAL = 5000; // Update progress at most every 5 seconds
+
     for (const file of files) {
       try {
         // Calculate file hash if not provided
@@ -80,12 +91,13 @@ export class UploaderManager {
           file.hash = await this.calculateFileHash(file.path);
         }
         
-        // Check if already uploaded
-        const isUploaded = await this.db.isFileUploaded(file.hash);
-        if (isUploaded) {
-          processedCount++;
-          continue;
-        }
+        // AIDEV-NOTE: Duplicate check disabled - CLI handles this with chat-specific sheets (TASK-023)
+        // The CLI checks duplicates in the correct chat-specific sheet before calling upload
+        // const isUploaded = await this.db.isFileUploaded(file.hash);
+        // if (isUploaded) {
+        //   processedCount++;
+        //   continue;
+        // }
         
         // AIDEV-NOTE: actual-upload-implementation; real file upload using GoogleApis with chat organization (TASK-029)
         const result = await this.googleApis.uploadFile(
@@ -94,7 +106,9 @@ export class UploaderManager {
             filename: file.name,
             mimeType: file.mimeType,
             chatName: options.chatName, // TASK-029: pass chat name for album/folder creation
-            chatJid: chatId // TASK-029: pass chat JID for album/folder creation
+            chatJid: chatId, // TASK-029: pass chat JID for album/folder creation
+            existingAlbumId: (options as any).existingAlbumId, // Pass existing album ID if available
+            existingFolderId: (options as any).existingFolderId // Pass existing folder ID if available
           },
           (uploaded, total) => {
             // Individual file progress - report partial progress for this file
@@ -104,62 +118,107 @@ export class UploaderManager {
             }
           }
         );
-        
-        // Save upload record with actual Google ID
-        await this.db.saveUploadedFile({
-          fileHash: file.hash,
-          fileName: file.name,
-          filePath: file.path,
-          fileSize: file.size,
-          uploadDate: new Date().toISOString(),
-          googleId: result.id, // Actual Google ID from upload
-          mimeType: file.mimeType,
-          chatId
-        });
-        
+
+        // Add result to array
+        results.push(result);
+
+        // Cache album/folder IDs for next uploads in this batch
+        if (result.albumId && !(options as any).existingAlbumId) {
+          (options as any).existingAlbumId = result.albumId;
+        }
+        if (result.folderId && !(options as any).existingFolderId) {
+          (options as any).existingFolderId = result.folderId;
+        }
+
+        // AIDEV-NOTE: File tracking moved to chat-specific sheets (TASK-023)
+        // The CLI handles saving upload status to the correct chat-specific sheet
+        // await this.db.saveUploadedFile({
+        //   fileHash: file.hash,
+        //   fileName: file.name,
+        //   filePath: file.path,
+        //   fileSize: file.size,
+        //   uploadDate: new Date().toISOString(),
+        //   googleId: result.id, // Actual Google ID from upload
+        //   mimeType: file.mimeType,
+        //   chatId
+        // });
+
         processedCount++;
-        
-        // Update progress
-        await this.db.updateProgress({
-          chatId,
-          lastProcessedFile: file.name,
-          totalFiles: files.length,
-          processedFiles: processedCount,
-          status: 'active',
-          lastUpdated: new Date().toISOString()
-        });
-        
+
+        // CRITICAL: For the LAST file, always update immediately to ensure final state is saved
+        // For other files, batch updates to reduce API calls
+        const now = Date.now();
+        const isLastFile = processedCount === files.length;
+        const shouldUpdateProgress = isLastFile || (now - lastProgressUpdate > PROGRESS_UPDATE_INTERVAL);
+
+        if (shouldUpdateProgress) {
+          await this.db.updateProgress({
+            chatId,
+            lastProcessedFile: file.name,
+            totalFiles: files.length,
+            processedFiles: processedCount,
+            status: isLastFile ? 'completed' : 'active',
+            lastUpdated: new Date().toISOString()
+          });
+          lastProgressUpdate = now;
+        }
+
         if (options.onProgress) {
           options.onProgress(processedCount / files.length);
         }
+
+        // Reset quota error count on successful upload
+        this.quotaErrorCount = 0;
+
+        // Apply adaptive delay after successful upload
+        if (this.config.rateLimit?.adaptiveDelay !== false && processedCount < files.length) {
+          await this.applyAdaptiveDelay();
+        }
         
-      } catch (error) {
-        // AIDEV-NOTE: error-handling-simplified; simple error handling for personal use
-        console.error(`Failed to upload ${file.name}:`, error);
-        
-        // Continue with next file instead of failing entire batch
-        processedCount++;
-        
-        await this.db.updateProgress({
-          chatId,
-          lastProcessedFile: `${file.name} (FAILED)`,
-          totalFiles: files.length,
-          processedFiles: processedCount,
-          status: 'active',
-          lastUpdated: new Date().toISOString()
-        });
+      } catch (error: any) {
+        // AIDEV-NOTE: quota-error-handling; handle quota errors with adaptive backoff
+        const errorMessage = error?.message || error?.response?.data?.error?.message || 'Unknown error';
+        const isQuotaError = errorMessage.includes('Quota exceeded') ||
+                            errorMessage.includes('quota') ||
+                            error?.response?.status === 429 ||
+                            errorMessage.includes('RESOURCE_EXHAUSTED');
+
+        if (isQuotaError) {
+          console.error(`❌ Quota exceeded for ${file.name}: ${errorMessage}`);
+          this.quotaErrorCount++;
+
+          // Increase delay exponentially on quota errors
+          await this.handleQuotaError();
+
+          // Retry the same file after backing off
+          console.log(`⏳ Retrying ${file.name} after quota backoff...`);
+          continue; // Don't increment processedCount, retry the same file
+        } else {
+          // Non-quota error - log and continue
+          console.error(`Failed to upload ${file.name}:`, errorMessage);
+          processedCount++;
+
+          // Update progress only if enough time has passed
+          const now = Date.now();
+          if (now - lastProgressUpdate > PROGRESS_UPDATE_INTERVAL) {
+            await this.db.updateProgress({
+              chatId,
+              lastProcessedFile: `${file.name} (FAILED)`,
+              totalFiles: files.length,
+              processedFiles: processedCount,
+              status: 'active',
+              lastUpdated: new Date().toISOString()
+            });
+            lastProgressUpdate = now;
+          }
+        }
       }
     }
-    
-    // Mark as completed
-    await this.db.updateProgress({
-      chatId,
-      lastProcessedFile: files[files.length - 1]?.name || '',
-      totalFiles: files.length,
-      processedFiles: processedCount,
-      status: 'completed',
-      lastUpdated: new Date().toISOString()
-    });
+
+    // Final status is already updated when processing the last file
+    // No need for duplicate update here (KISS principle)
+
+    return results;
   }
   
   async getProgress(chatId: string): Promise<ProgressRecord | null> {
@@ -226,6 +285,45 @@ export class UploaderManager {
    */
   isAuthenticated(): boolean {
     return this.googleApis.isAuthenticated();
+  }
+
+  /**
+   * Apply adaptive delay between uploads to avoid quota issues
+   * AIDEV-NOTE: adaptive-delay; smart delay that adjusts based on quota errors
+   */
+  private async applyAdaptiveDelay(): Promise<void> {
+    const minDelay = this.config.rateLimit?.initialDelayMs || 1000;
+    const maxDelay = this.config.rateLimit?.maxDelayMs || 30000;
+
+    // Gradually decrease delay if no quota errors
+    if (this.quotaErrorCount === 0 && this.currentDelayMs > minDelay) {
+      this.currentDelayMs = Math.max(minDelay, this.currentDelayMs * 0.9);
+    }
+
+    if (this.currentDelayMs > 0) {
+      console.log(`⏱️  Waiting ${(this.currentDelayMs / 1000).toFixed(1)}s before next upload...`);
+      await new Promise(resolve => setTimeout(resolve, this.currentDelayMs));
+    }
+  }
+
+  /**
+   * Handle quota errors with exponential backoff
+   * AIDEV-NOTE: quota-backoff; exponential backoff for quota errors
+   */
+  private async handleQuotaError(): Promise<void> {
+    const minDelay = this.config.rateLimit?.initialDelayMs || 1000;
+    const maxDelay = this.config.rateLimit?.maxDelayMs || 30000;
+
+    // Exponential backoff: double the delay for each consecutive error
+    this.currentDelayMs = Math.min(maxDelay, Math.max(minDelay * 2, this.currentDelayMs * 2));
+
+    // For quota errors, wait longer (at least 10 seconds)
+    const quotaWaitTime = Math.max(10000, this.currentDelayMs);
+
+    console.log(`⚠️  Quota limit reached. Backing off for ${(quotaWaitTime / 1000).toFixed(0)}s...`);
+    console.log(`💡 Tip: The delay will automatically adjust based on API response.`);
+
+    await new Promise(resolve => setTimeout(resolve, quotaWaitTime));
   }
 }
 

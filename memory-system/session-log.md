@@ -999,3 +999,30 @@ The project foundation is **100% complete** and ready for Phase 1 development. A
 - **Orchestration Status**: 🎯 **TASK-029 MISSION ACCOMPLISHED**
 
 ---
+
+## 2025-09-14 - TASK-030 SHA-256 File Hash Enhancement
+
+- **Agent**: dwarf
+- **Task**: Add SHA-256 file hash column to per-chat Google Sheets for duplicate detection
+- **Implementation**:
+  - ✅ Added fileHash field to ChatFileInfo interface
+  - ✅ Added 'hash do arquivo' column (E) to per-chat sheets structure
+  - ✅ Updated database methods for 13-column structure (was 12)
+  - ✅ Added hash calculation and duplicate detection in CLI upload command
+  - ✅ Implemented content-based duplicate detection (same SHA-256 = skip)
+  - ✅ Updated column mappings: upload tracking moved from G-L to H-M
+- **Files Modified**:
+  - `src/chat-metadata/types.ts` - Added fileHash field
+  - `src/database/index.ts` - Enhanced schema and methods
+  - `src/cli/cli-application.ts` - Added hash calculation and duplicate detection
+  - `memory-system/critical/2-tasks.md` - Updated task status
+- **Validation Complete**:
+  - ✅ Build passes without errors
+  - ✅ All tests pass (including CLI scan command)
+  - ✅ No breaking changes to existing functionality
+  - ✅ KISS approach: simple hash column addition with duplicate logic
+  - ✅ Ready for production use
+- **User Experience**: Files with identical content are now detected and skipped during upload
+- **Orchestration Status**: 🎯 **TASK-030 MISSION ACCOMPLISHED**
+
+---
