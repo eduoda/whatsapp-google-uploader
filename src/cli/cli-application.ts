@@ -8,6 +8,8 @@ import { Command } from 'commander';
 import { config, envFileExists, createEnvFile } from '../config';
 import { FileInfo } from '../scanner';
 import { ChatFileInfo } from '../chat-metadata/types';
+import * as crypto from 'crypto';
+import { createReadStream } from 'fs';
 
 export class CLIApplication {
   private program: Command;
@@ -329,7 +331,7 @@ export class CLIApplication {
           const { ChatMetadataExtractor } = require('../chat-metadata');
           const isDryRun = options.dryRun;
 
-          console.log('Scanning WhatsApp media files...\n');
+          console.log('\n🔍 Starting WhatsApp media scan...');
 
           // Create scanner with custom path or config path
           // AIDEV-NOTE: env-config-priority; use config.whatsappPath when no custom path (TASK-023 fix)
@@ -363,7 +365,7 @@ export class CLIApplication {
           }, {});
 
           // Display results (simple format)
-          console.log('WhatsApp Media Files:\n');
+          console.log('\n📂 WhatsApp Media Files Found:\n');
 
           for (const [type, typeFiles] of Object.entries(grouped)) {
             const totalSizeForType = typeFiles.reduce((sum: number, f: FileInfo) => sum + f.size, 0);
@@ -382,19 +384,16 @@ export class CLIApplication {
           // Summary
           const totalSize = files.reduce((sum: number, f: FileInfo) => sum + f.size, 0);
           const totalCount = files.length;
-          console.log(`Total: ${totalCount} files, ${(totalSize / 1024 / 1024).toFixed(1)} MB`);
+          console.log(`📊 Total: ${totalCount.toLocaleString()} files, ${(totalSize / 1024 / 1024).toFixed(1)} MB`);
 
           // AIDEV-NOTE: Chat metadata extraction and Google Sheets integration (TASK-023)
           if (!isDryRun) {
-            console.log('\n📊 Extracting chat metadata...');
-
             try {
               // Extract chat metadata from msgstore.db
-              const chatExtractor = new ChatMetadataExtractor();
+              const chatExtractor = new ChatMetadataExtractor(undefined, customPath || config.whatsappPath);
               const chatMetadata = await chatExtractor.extractChatMetadata();
 
               if (chatMetadata.length > 0) {
-                console.log('\n☁️  Saving to Google Sheets...');
 
                 // Initialize Google APIs and SheetsDatabase
                 const { GoogleApis } = require('../google-apis');
@@ -546,6 +545,11 @@ export class CLIApplication {
         // Initialize sheets database and check per-chat sheet
         console.log('☁️  Checking Google Sheets...');
         const sheetsDb = new SheetsDatabase(googleApis.auth);
+        await sheetsDb.initializeChatMetadata();
+
+        // Get existing album/folder IDs from chats table
+        let chatGoogleInfo = await sheetsDb.getChatGoogleInfo(chatJid);
+        console.log('📂 Chat Google info:', chatGoogleInfo ? 'Found existing album/folder' : 'Will create new');
 
         // Load existing upload status from per-chat sheets
         await sheetsDb.saveChatFiles(chatJid, chatName, existingFiles);
@@ -555,12 +559,22 @@ export class CLIApplication {
         const existingData = await sheetsDb.readExistingChatFiles(spreadsheetId);
 
         // Update files with current upload status from sheets
-        const filesWithStatus = this.mergeUploadStatus(existingFiles, existingData);
+        let filesWithStatus = this.mergeUploadStatus(existingFiles, existingData);
+
+        // TASK-030: Calculate file hashes and detect duplicates
+        filesWithStatus = await this.processFileHashes(filesWithStatus);
+
+        // Save updated file information (with hashes) back to sheets
+        console.log('💾 Saving updated file information to Google Sheets...');
+        await sheetsDb.saveChatFiles(chatJid, chatName, filesWithStatus);
 
         // Filter files based on upload status and options
         let filesToUpload = filesWithStatus.filter(file => {
           if (file.uploadStatus === 'uploaded') {
             return false; // Always skip uploaded files
+          }
+          if (file.uploadStatus === 'skipped') {
+            return false; // Skip duplicate files (TASK-030)
           }
           if (skipFailed && file.uploadStatus === 'failed') {
             return false; // Skip failed files if --skip-failed flag is used
@@ -568,12 +582,16 @@ export class CLIApplication {
           return true; // Upload pending and failed files (unless --skip-failed)
         });
 
-        const skippedUploaded = filesWithStatus.filter(f => f.uploadStatus === 'uploaded').length;
+        let skippedUploaded = filesWithStatus.filter(f => f.uploadStatus === 'uploaded').length;
+        const skippedDuplicates = filesWithStatus.filter(f => f.uploadStatus === 'skipped').length; // TASK-030
         const skippedFailed = skipFailed ? filesWithStatus.filter(f => f.uploadStatus === 'failed').length : 0;
 
         console.log(`📊 Upload Status:`);
         console.log(`   ${filesToUpload.length} files ready for upload`);
         console.log(`   ${skippedUploaded} files already uploaded (skipping)`);
+        if (skippedDuplicates > 0) {
+          console.log(`   ${skippedDuplicates} duplicate files skipped (TASK-030: same content hash)`);
+        }
         if (skippedFailed > 0) {
           console.log(`   ${skippedFailed} failed files skipped (--skip-failed flag used)`);
         } else {
@@ -589,11 +607,16 @@ export class CLIApplication {
           return;
         }
 
-        // Initialize uploader manager
+        // Initialize uploader manager with adaptive delay for quota management
         console.log('🚀 Starting uploads...\n');
         const uploaderManager = new UploaderManager({
           credentialsPath: './credentials.json',
-          tokenPath: './tokens/google-tokens.json'
+          tokenPath: './tokens/google-tokens.json',
+          rateLimit: {
+            adaptiveDelay: true, // Enable smart quota management
+            initialDelayMs: 1500, // Start with 1.5s delay between uploads
+            maxDelayMs: 60000 // Max 60s backoff for quota errors
+          }
         });
         await uploaderManager.initialize();
 
@@ -625,40 +648,79 @@ export class CLIApplication {
             };
 
             // Upload single file with chat organization (TASK-029)
-            await uploaderManager.uploadFiles([fileUpload], {
+            // AIDEV-NOTE: Pass existing album/folder IDs to avoid re-searching
+            const uploadOptions: any = {
               chatId: chatJid,
               chatName: chatName // TASK-029: pass chat name for album/folder naming
-            });
+            };
 
-            // Update Google Sheets with success and organization info (TASK-029)
-            file.uploadStatus = 'uploaded';
-            const organizationInfo = fileUpload.mimeType.startsWith('image/') || fileUpload.mimeType.startsWith('video/')
-              ? `WA_${chatName}_${chatJid}` // Photos album name
-              : `${chatName}_${chatJid}`;   // Drive folder name
+            // Add existing IDs if available
+            if (chatGoogleInfo?.albumId) {
+              uploadOptions.existingAlbumId = chatGoogleInfo.albumId;
+            }
+            if (chatGoogleInfo?.folderId) {
+              uploadOptions.existingFolderId = chatGoogleInfo.folderId;
+            }
 
-            await sheetsDb.updateFileUploadStatus(chatJid, chatName, file.messageId, {
-              uploadStatus: 'uploaded',
-              uploadDate: new Date(),
-              fileLink: `https://photos.google.com/`, // Placeholder for now
-              directoryName: organizationInfo,
-              directoryLink: undefined, // Will be updated later when we have album/folder links
-              uploadError: undefined
-            });
+            const uploadResult = await uploaderManager.uploadFiles([fileUpload], uploadOptions);
 
-            uploadedCount++;
-            console.log(`   ✅ Uploaded successfully\n`);
+            // Save album/folder info to chats table if it's the first upload
+            if (uploadResult && uploadResult.length > 0) {
+              const result = uploadResult[0];
 
-          } catch (uploadError) {
-            failedCount++;
-            console.log(`   ❌ Upload failed: ${(uploadError as Error).message}\n`);
+              // If new album was created (no existing ID was passed)
+              if (result?.albumId && !chatGoogleInfo?.albumId) {
+                await sheetsDb.updateChatAlbumInfo(chatJid, result.albumId, result.albumName || '');
+                chatGoogleInfo = chatGoogleInfo || {};
+                chatGoogleInfo.albumId = result.albumId;
+              }
 
-            // Update Google Sheets with failure
-            file.uploadStatus = 'failed';
-            await sheetsDb.updateFileUploadStatus(chatJid, chatName, file.messageId, {
-              uploadStatus: 'failed',
-              uploadDate: new Date(),
-              uploadError: (uploadError as Error).message
-            });
+              // If new folder was created (no existing ID was passed)
+              if (result?.folderId && !chatGoogleInfo?.folderId) {
+                await sheetsDb.updateChatDriveInfo(chatJid, result.folderId, result.folderName || '');
+                chatGoogleInfo = chatGoogleInfo || {};
+                chatGoogleInfo.folderId = result.folderId;
+              }
+
+              // Update Google Sheets with success (TASK-029)
+              // AIDEV-NOTE: Album/folder info stored in main chats table, not individual sheets (TASK-023)
+              file.uploadStatus = 'uploaded';
+
+              await sheetsDb.updateFileUploadStatus(chatJid, chatName, file.messageId, {
+                uploadStatus: 'uploaded',
+                uploadDate: new Date(),
+                fileLink: result?.url || '', // Use actual file URL from upload result
+                uploadError: undefined
+              });
+
+              uploadedCount++;
+              console.log(`   ✅ Uploaded successfully\n`);
+            } else {
+              console.log(`   ⏭️  Already uploaded (skipped)\n`);
+              skippedUploaded++;
+            }
+
+          } catch (uploadError: any) {
+            const errorMessage = uploadError?.message || 'Unknown error';
+            const isQuotaError = errorMessage.includes('Quota exceeded') ||
+                                errorMessage.includes('quota') ||
+                                uploadError?.response?.status === 429;
+
+            if (isQuotaError) {
+              // For quota errors, don't mark as failed - will be retried automatically
+              console.log(`   ⏸️ Quota limit reached. Will retry after cooldown.\n`);
+            } else {
+              failedCount++;
+              console.log(`   ❌ Upload failed: ${errorMessage}\n`);
+
+              // Update Google Sheets with failure (only for non-quota errors)
+              file.uploadStatus = 'failed';
+              await sheetsDb.updateFileUploadStatus(chatJid, chatName, file.messageId, {
+                uploadStatus: 'failed',
+                uploadDate: new Date(),
+                uploadError: errorMessage
+              });
+            }
           }
         }
 
@@ -728,11 +790,103 @@ export class CLIApplication {
       const existing = existingData.get(file.messageId);
       if (existing && existing.uploadStatus) {
         file.uploadStatus = existing.uploadStatus.toLowerCase();
+        // TASK-030: Preserve existing file hash for duplicate detection
+        file.fileHash = existing.fileHash || file.fileHash;
       } else {
         file.uploadStatus = 'pending';
       }
       return file;
     });
+  }
+
+  /**
+   * Calculate SHA-256 hash for file content (TASK-030)
+   * AIDEV-NOTE: hash-calculation; reuses same logic as UploaderManager for consistency
+   */
+  private async calculateFileHash(filePath: string): Promise<string> {
+    const hash = crypto.createHash('sha256');
+    const stream = createReadStream(filePath);
+
+    return new Promise((resolve, reject) => {
+      stream.on('data', (chunk) => {
+        hash.update(chunk);
+      });
+
+      stream.on('end', () => {
+        resolve(hash.digest('hex'));
+      });
+
+      stream.on('error', reject);
+    });
+  }
+
+  /**
+   * Calculate hashes for files and check for duplicates (TASK-030)
+   * AIDEV-NOTE: hash-and-duplicate-check; calculates hashes and adds duplicate detection
+   */
+  private async processFileHashes(files: ChatFileInfo[]): Promise<ChatFileInfo[]> {
+    console.log('🔍 Calculating file hashes for duplicate detection...');
+
+    const hashToFiles = new Map<string, ChatFileInfo[]>();
+    let hashesCalculated = 0;
+    const totalFiles = files.filter(f => f.fileExists && f.filePath && !f.fileHash).length;
+
+    const processedFiles = await Promise.all(files.map(async (file, index) => {
+      // Calculate hash if file exists and no hash yet
+      if (file.fileExists && file.filePath && !file.fileHash) {
+        try {
+          if (totalFiles > 0) {
+            process.stdout.write(`\r   ⏳ Hashing: ${hashesCalculated + 1}/${totalFiles} files (${Math.round((hashesCalculated + 1) / totalFiles * 100)}%)`);
+          }
+          file.fileHash = await this.calculateFileHash(file.filePath);
+          hashesCalculated++;
+        } catch (error) {
+          console.warn(`\n     ⚠️  Failed to hash ${file.fileName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Track files by hash for duplicate detection
+      if (file.fileHash) {
+        if (!hashToFiles.has(file.fileHash)) {
+          hashToFiles.set(file.fileHash, []);
+        }
+        hashToFiles.get(file.fileHash)!.push(file);
+      }
+
+      return file;
+    }));
+
+    if (totalFiles > 0) {
+      console.log(`\r   ✅ Hashed ${hashesCalculated}/${totalFiles} files successfully             `);
+    }
+
+    // Check for duplicates and mark them
+    let duplicatesFound = 0;
+    for (const [hash, filesWithSameHash] of hashToFiles) {
+      if (filesWithSameHash.length > 1) {
+        duplicatesFound += filesWithSameHash.length - 1;
+        console.log(`   🔍 Found ${filesWithSameHash.length} files with same content (hash: ${hash.substring(0, 16)}...)`);
+
+        // Keep the first one, mark others as duplicates
+        const originalFile = filesWithSameHash[0];
+        for (let i = 1; i < filesWithSameHash.length; i++) {
+          const duplicateFile = filesWithSameHash[i];
+          if (duplicateFile && originalFile) {
+            duplicateFile.uploadStatus = 'skipped';
+            duplicateFile.uploadError = `Duplicate content (same as ${originalFile.fileName})`;
+            console.log(`     - ${duplicateFile.fileName} → marked as duplicate`);
+          }
+        }
+      }
+    }
+
+    if (duplicatesFound > 0) {
+      console.log(`   📊 Found ${duplicatesFound} duplicate files that will be skipped`);
+    } else {
+      console.log(`   ✅ No duplicate files found`);
+    }
+
+    return processedFiles;
   }
 
   run(): void {

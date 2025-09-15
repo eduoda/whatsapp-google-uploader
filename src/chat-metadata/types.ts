@@ -39,7 +39,7 @@ export interface ChatMetadata {
   /** Chat creation date */
   createdDate?: Date;
 
-  // AIDEV-NOTE: File control metrics (calculated from media scan)
+  // AIDEV-NOTE: File control metrics (calculated from actual files in directory)
   /** Total media files count */
   totalMediaCount: number;
 
@@ -49,14 +49,26 @@ export interface ChatMetadata {
   /** Count of photo files */
   photosCount: number;
 
+  /** Total size of photo files in MB */
+  photosSizeMB: number;
+
   /** Count of video files */
   videosCount: number;
+
+  /** Total size of video files in MB */
+  videosSizeMB: number;
 
   /** Count of audio files */
   audiosCount: number;
 
+  /** Total size of audio files in MB */
+  audiosSizeMB: number;
+
   /** Count of document files */
   documentsCount: number;
+
+  /** Total size of document files in MB */
+  documentsSizeMB: number;
 
   /** Last scan/verification timestamp */
   lastVerificationDate?: Date;
@@ -86,6 +98,9 @@ export interface ChatMetadata {
   // AIDEV-NOTE: Google service integration fields (initially empty)
   /** Name of Google Photos album created for this chat */
   photosAlbumName?: string;
+
+  /** Google Photos album ID for quick access without searching */
+  photosAlbumId?: string;
 
   /** Direct link to Google Photos album for this chat */
   photosAlbumLink?: string;
@@ -173,9 +188,13 @@ export const PORTUGUESE_COLUMN_LABELS = {
   totalMediaCount: 'Total de Mídias',
   totalMediaSizeMB: 'Tamanho Total (MB)',
   photosCount: 'Qtd Fotos',
+  photosSizeMB: 'Tamanho Total Fotos (MB)',
   videosCount: 'Qtd Vídeos',
+  videosSizeMB: 'Tamanho Total Vídeos (MB)',
   audiosCount: 'Qtd Áudios',
+  audiosSizeMB: 'Tamanho Total Áudios (MB)',
   documentsCount: 'Qtd Documentos',
+  documentsSizeMB: 'Tamanho Total Documentos (MB)',
   lastVerificationDate: 'Última Verificação',
 
   // Status de Sincronização
@@ -257,6 +276,9 @@ export interface ChatFileInfo {
 
   /** Actual file size from filesystem (if file exists) */
   actualSize?: number;
+
+  /** SHA-256 hash of file content for duplicate detection */
+  fileHash?: string;
 
   // Upload tracking columns (for Google Sheets)
   /** Current upload status */

@@ -515,9 +515,13 @@ export class SheetsDatabase {
       PORTUGUESE_COLUMN_LABELS.totalMediaCount,
       PORTUGUESE_COLUMN_LABELS.totalMediaSizeMB,
       PORTUGUESE_COLUMN_LABELS.photosCount,
+      PORTUGUESE_COLUMN_LABELS.photosSizeMB,
       PORTUGUESE_COLUMN_LABELS.videosCount,
+      PORTUGUESE_COLUMN_LABELS.videosSizeMB,
       PORTUGUESE_COLUMN_LABELS.audiosCount,
+      PORTUGUESE_COLUMN_LABELS.audiosSizeMB,
       PORTUGUESE_COLUMN_LABELS.documentsCount,
+      PORTUGUESE_COLUMN_LABELS.documentsSizeMB,
       PORTUGUESE_COLUMN_LABELS.lastVerificationDate,
       // Status de Sincronização
       PORTUGUESE_COLUMN_LABELS.lastSyncDate,
@@ -543,7 +547,7 @@ export class SheetsDatabase {
 
     await this.sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${this.CHAT_METADATA_SHEET}!A1:AG1`,
+      range: `${this.CHAT_METADATA_SHEET}!A1:AK1`,
       valueInputOption: 'RAW',
       requestBody: {
         values: [headers]
@@ -625,7 +629,7 @@ export class SheetsDatabase {
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.chatMetadataSpreadsheetId!,
-        range: `${this.CHAT_METADATA_SHEET}!A2:AG`
+        range: `${this.CHAT_METADATA_SHEET}!A2:AK`
       });
 
       const rows = response.data.values || [];
@@ -704,24 +708,30 @@ export class SheetsDatabase {
       return;
     }
 
+    console.log('\n☁️  Saving to Google Sheets...');
+
     // AIDEV-NOTE: Ensure chat metadata spreadsheet exists
     if (!this.chatMetadataSpreadsheetId) {
+      console.log('  📄 Creating new spreadsheet...');
       await this.createChatMetadataSheet();
     }
 
     // AIDEV-NOTE: Read existing data to preserve user settings and sync status
+    console.log('  📖 Reading existing data to preserve user settings...');
     const existingData = await this.readExistingChatMetadata();
 
     // AIDEV-NOTE: Merge new data with existing preserving important fields
+    console.log('  🔄 Merging with existing data...');
     const mergedMetadata = chatMetadata.map(chat => {
       const existing = existingData.get(chat.chatJid);
       return existing ? this.mergeWithExisting(chat, existing) : chat;
     });
 
-    // AIDEV-NOTE: Clear and rewrite with merged data
+    // AIDEV-NOTE: Clear and rewrite with merged data (extended range for new columns)
+    console.log('  🧹 Clearing old data...');
     await this.sheets.spreadsheets.values.clear({
       spreadsheetId: this.chatMetadataSpreadsheetId!,
-      range: `${this.CHAT_METADATA_SHEET}!A2:AG`
+      range: `${this.CHAT_METADATA_SHEET}!A2:AK`
     });
 
     // AIDEV-NOTE: Convert merged metadata to sheet rows with all enhanced columns
@@ -740,9 +750,13 @@ export class SheetsDatabase {
       chat.totalMediaCount,
       chat.totalMediaSizeMB,
       chat.photosCount,
+      chat.photosSizeMB,
       chat.videosCount,
+      chat.videosSizeMB,
       chat.audiosCount,
+      chat.audiosSizeMB,
       chat.documentsCount,
+      chat.documentsSizeMB,
       chat.lastVerificationDate ? chat.lastVerificationDate.toISOString() : '',
       // Status de Sincronização
       chat.lastSyncDate ? chat.lastSyncDate.toISOString() : '',
@@ -766,17 +780,27 @@ export class SheetsDatabase {
       chat.notes || ''
     ]);
 
-    await this.sheets.spreadsheets.values.append({
-      spreadsheetId: this.chatMetadataSpreadsheetId!,
-      range: `${this.CHAT_METADATA_SHEET}!A2:AG`,
-      valueInputOption: 'USER_ENTERED',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: {
-        values: rows
-      }
-    });
+    console.log(`  ✍️  Writing ${rows.length} rows to spreadsheet...`);
 
-    console.log(`✓ Updated metadata for ${mergedMetadata.length} chats (${existingData.size} existing preserved)`);
+    // Write in batches to show progress
+    const batchSize = 500;
+    for (let i = 0; i < rows.length; i += batchSize) {
+      const batch = rows.slice(i, Math.min(i + batchSize, rows.length));
+      process.stdout.write(`\r  ⏳ Uploading: ${Math.min(i + batchSize, rows.length)}/${rows.length} chats (${Math.round(Math.min(i + batchSize, rows.length)/rows.length*100)}%)`);
+
+      await this.sheets.spreadsheets.values.append({
+        spreadsheetId: this.chatMetadataSpreadsheetId!,
+        range: `${this.CHAT_METADATA_SHEET}!A2:AK`,
+        valueInputOption: 'USER_ENTERED',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: {
+          values: batch
+        }
+      });
+    }
+
+    console.log(`\r  ✅ Successfully saved ${mergedMetadata.length} chats to Google Sheets!              `);
+    console.log(`     📊 ${existingData.size} existing chats preserved with their settings`);
   }
 
   /**
@@ -794,18 +818,158 @@ export class SheetsDatabase {
     await this.createChatMetadataSheet();
   }
 
+  /**
+   * Update Google Photos album info for a specific chat
+   * AIDEV-NOTE: Updates album ID and link to avoid re-searching on next upload
+   */
+  async updateChatAlbumInfo(chatJid: string, albumId: string, albumName: string): Promise<void> {
+    if (!this.chatMetadataSpreadsheetId) {
+      console.warn('Chat metadata spreadsheet not initialized');
+      return;
+    }
+
+    try {
+      // Get all chats to find the row for this JID
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.chatMetadataSpreadsheetId,
+        range: `${this.CHAT_METADATA_SHEET}!B:B` // Column B has JIDs
+      });
+
+      const jids = response.data.values || [];
+      const rowIndex = jids.findIndex(row => row[0] === chatJid);
+
+      if (rowIndex === -1) {
+        console.warn(`Chat ${chatJid} not found in spreadsheet`);
+        return;
+      }
+
+      // Update album name (column Z) and ID stored in name field
+      const actualRow = rowIndex + 1; // +1 because spreadsheet is 1-indexed
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.chatMetadataSpreadsheetId,
+        range: `${this.CHAT_METADATA_SHEET}!Z${actualRow}:AA${actualRow}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[
+            `${albumName}|${albumId}`, // Store ID with name
+            `https://photos.google.com/album/${albumId}` // Album link
+          ]]
+        }
+      });
+
+      console.log(`✓ Updated album info for chat ${chatJid}`);
+    } catch (error) {
+      console.error('Failed to update chat album info:', error);
+    }
+  }
+
+  /**
+   * Update Google Drive folder info for a specific chat
+   * AIDEV-NOTE: Updates folder ID and link to avoid re-searching on next upload
+   */
+  async updateChatDriveInfo(chatJid: string, folderId: string, folderName: string): Promise<void> {
+    if (!this.chatMetadataSpreadsheetId) {
+      console.warn('Chat metadata spreadsheet not initialized');
+      return;
+    }
+
+    try {
+      // Get all chats to find the row for this JID
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.chatMetadataSpreadsheetId,
+        range: `${this.CHAT_METADATA_SHEET}!B:B` // Column B has JIDs
+      });
+
+      const jids = response.data.values || [];
+      const rowIndex = jids.findIndex(row => row[0] === chatJid);
+
+      if (rowIndex === -1) {
+        console.warn(`Chat ${chatJid} not found in spreadsheet`);
+        return;
+      }
+
+      // Update folder name (column AB) and link (column AC)
+      const actualRow = rowIndex + 1; // +1 because spreadsheet is 1-indexed
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.chatMetadataSpreadsheetId,
+        range: `${this.CHAT_METADATA_SHEET}!AB${actualRow}:AC${actualRow}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[
+            `${folderName}|${folderId}`, // Store ID with name
+            `https://drive.google.com/drive/folders/${folderId}` // Folder link
+          ]]
+        }
+      });
+
+      console.log(`✓ Updated Drive folder info for chat ${chatJid}`);
+    } catch (error) {
+      console.error('Failed to update chat Drive info:', error);
+    }
+  }
+
+  /**
+   * Get Google Photos album ID and Drive folder ID for a chat
+   * AIDEV-NOTE: Retrieves stored IDs to avoid API calls
+   */
+  async getChatGoogleInfo(chatJid: string): Promise<{ albumId?: string; folderId?: string } | null> {
+    if (!this.chatMetadataSpreadsheetId) {
+      return null;
+    }
+
+    try {
+      // Get all chats to find the row for this JID
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.chatMetadataSpreadsheetId,
+        range: `${this.CHAT_METADATA_SHEET}!B:AC` // B=JID, Z=album, AB=folder
+      });
+
+      const rows = response.data.values || [];
+      const chatRow = rows.find(row => row[1] === chatJid); // Column B (index 1)
+
+      if (!chatRow) {
+        return null;
+      }
+
+      const result: { albumId?: string; folderId?: string } = {};
+
+      // Extract album ID from column Z (index 25)
+      if (chatRow[25]) {
+        const albumData = chatRow[25].split('|');
+        if (albumData.length > 1) {
+          result.albumId = albumData[1];
+        }
+      }
+
+      // Extract folder ID from column AB (index 27)
+      if (chatRow[27]) {
+        const folderData = chatRow[27].split('|');
+        if (folderData.length > 1) {
+          result.folderId = folderData[1];
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Failed to get chat Google info:', error);
+      return null;
+    }
+  }
+
   // AIDEV-NOTE: Per-Chat Google Sheets Integration (TASK-025)
   // Methods for creating individual chat file tracking spreadsheets
 
   /**
    * Portuguese column headers for per-chat file tracking sheets
    * Maps exactly to ChatFileInfo interface as specified in TASK-025
+   * AIDEV-NOTE: Album/folder info stored in main chats table, not here (TASK-023)
    */
   private readonly CHAT_FILE_COLUMNS = [
     'id do arquivo',                 // messageId
     'nome do arquivo',              // fileName
     'tipo de arquivo',              // mediaType
     'tamanho do arquivo',           // size/actualSize
+    'hash do arquivo',              // fileHash (TASK-030: SHA-256 for duplicate detection)
     'data da mensagem',             // messageTimestamp
     'remetente',                    // senderJid
     'status do upload',             // uploadStatus
@@ -813,8 +977,6 @@ export class SheetsDatabase {
     'arquivo deletado do celular',  // fileDeletedFromPhone
     'ultima mensagem de erro',      // uploadError
     'tentativas de upload',         // uploadAttempts
-    'nome do diretorio/album',      // directory/album name (populated during upload)
-    'link para diretorio/album',    // directory/album link (populated during upload)
     'link do arquivo/midia'         // file/media link (populated during upload)
   ];
 
@@ -882,7 +1044,7 @@ export class SheetsDatabase {
           {
             properties: {
               title: 'Arquivos',
-              gridProperties: { rowCount: 10000, columnCount: 14 }
+              gridProperties: { rowCount: 10000, columnCount: 13 }
             }
           }
         ]
@@ -903,7 +1065,7 @@ export class SheetsDatabase {
     // AIDEV-NOTE: Initialize with Portuguese column headers
     await this.sheets.spreadsheets.values.update({
       spreadsheetId: newSpreadsheetId,
-      range: 'Arquivos!A1:N1',
+      range: 'Arquivos!A1:M1',
       valueInputOption: 'RAW',
       requestBody: {
         values: [this.CHAT_FILE_COLUMNS]
@@ -938,7 +1100,7 @@ export class SheetsDatabase {
     // AIDEV-NOTE: Clear and rewrite with merged data
     await this.sheets.spreadsheets.values.clear({
       spreadsheetId,
-      range: 'Arquivos!A2:N'
+      range: 'Arquivos!A2:M'
     });
 
     // AIDEV-NOTE: Convert ChatFileInfo to sheet rows
@@ -946,7 +1108,7 @@ export class SheetsDatabase {
 
     await this.sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: 'Arquivos!A2:N',
+      range: 'Arquivos!A2:M',
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       requestBody: {
@@ -997,19 +1159,17 @@ export class SheetsDatabase {
         return;
       }
 
-      // AIDEV-NOTE: Update specific columns (G-N) for upload tracking
+      // AIDEV-NOTE: Update specific columns (H-M) for upload tracking (TASK-030: updated after hash column insertion)
       const updateRow = rowIndex + 1; // Convert to 1-based index
-      const updateRange = `Arquivos!G${updateRow}:N${updateRow}`;
+      const updateRange = `Arquivos!H${updateRow}:M${updateRow}`;
 
       const updateValues = [
-        status.uploadStatus || 'pending',                              // G: status do upload
-        status.uploadDate ? status.uploadDate.toISOString() : '',     // H: data do upload
-        status.fileDeletedFromPhone || false,                         // I: arquivo deletado do celular
-        status.uploadError || '',                                      // J: ultima mensagem de erro
-        status.uploadAttempts || 0,                                    // K: tentativas de upload
-        status.directoryName || '',                                    // L: nome do diretorio/album
-        status.directoryLink || '',                                    // M: link para diretorio/album
-        status.fileLink || ''                                          // N: link do arquivo/midia
+        status.uploadStatus || 'pending',                              // H: status do upload
+        status.uploadDate ? status.uploadDate.toISOString() : '',     // I: data do upload
+        status.fileDeletedFromPhone || false,                         // J: arquivo deletado do celular
+        status.uploadError || '',                                      // K: ultima mensagem de erro
+        status.uploadAttempts || 0,                                    // L: tentativas de upload
+        status.fileLink || ''                                          // M: link do arquivo/midia
       ];
 
       await this.sheets.spreadsheets.values.update({
@@ -1076,16 +1236,15 @@ export class SheetsDatabase {
       file.fileName,                                                  // B: nome do arquivo
       file.mediaType,                                                 // C: tipo de arquivo
       file.actualSize || file.size || 0,                             // D: tamanho do arquivo
-      file.messageTimestamp.toISOString(),                           // E: data da mensagem
-      file.senderJid || 'Você',                                      // F: remetente ("Você" for outgoing)
-      file.uploadStatus,                                              // G: status do upload
-      file.uploadDate ? file.uploadDate.toISOString() : '',          // H: data do upload
-      file.fileDeletedFromPhone,                                      // I: arquivo deletado do celular
-      file.uploadError || '',                                         // J: ultima mensagem de erro
-      file.uploadAttempts,                                            // K: tentativas de upload
-      '',                                                             // L: nome do diretorio/album (populated during upload)
-      '',                                                             // M: link para diretorio/album (populated during upload)
-      ''                                                              // N: link do arquivo/midia (populated during upload)
+      file.fileHash || '',                                            // E: hash do arquivo (TASK-030)
+      file.messageTimestamp.toISOString(),                           // F: data da mensagem
+      file.senderJid || 'Você',                                      // G: remetente ("Você" for outgoing)
+      file.uploadStatus,                                              // H: status do upload
+      file.uploadDate ? file.uploadDate.toISOString() : '',          // I: data do upload
+      file.fileDeletedFromPhone,                                      // J: arquivo deletado do celular
+      file.uploadError || '',                                         // K: ultima mensagem de erro
+      file.uploadAttempts,                                            // L: tentativas de upload
+      ''                                                              // M: link do arquivo/midia (populated during upload)
     ];
   }
 
@@ -1100,7 +1259,7 @@ export class SheetsDatabase {
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: 'Arquivos!A2:N'
+        range: 'Arquivos!A2:M'
       });
 
       const rows = response.data.values || [];
@@ -1109,15 +1268,14 @@ export class SheetsDatabase {
       rows.forEach(row => {
         if (row[0]) { // messageId
           existingData.set(row[0], {
-            // Preserve upload tracking columns (G-N, indices 6-13)
-            uploadStatus: row[6] || 'pending',
-            uploadDate: row[7] || '',
-            fileDeletedFromPhone: row[8] === 'true' || row[8] === true,
-            uploadError: row[9] || '',
-            uploadAttempts: parseInt(row[10]) || 0,
-            directoryName: row[11] || '',
-            directoryLink: row[12] || '',
-            fileLink: row[13] || ''
+            // Preserve file hash and upload tracking columns (E and H-M, indices 4 and 7-12)
+            fileHash: row[4] || '', // E: hash do arquivo (TASK-030)
+            uploadStatus: row[7] || 'pending', // H: status do upload
+            uploadDate: row[8] || '', // I: data do upload
+            fileDeletedFromPhone: row[9] === 'true' || row[9] === true, // J: arquivo deletado do celular
+            uploadError: row[10] || '', // K: ultima mensagem de erro
+            uploadAttempts: parseInt(row[11]) || 0, // L: tentativas de upload
+            fileLink: row[12] || '' // M: link do arquivo/midia
           });
         }
       });
@@ -1142,9 +1300,11 @@ export class SheetsDatabase {
         return file; // New file, use as-is
       }
 
-      // AIDEV-NOTE: Merge with existing upload tracking data
+      // AIDEV-NOTE: Merge with existing upload tracking data and file hash (TASK-030)
       return {
         ...file,
+        // Preserve file hash if available (TASK-030: SHA-256 for duplicate detection)
+        fileHash: existing.fileHash || file.fileHash,
         // Preserve upload tracking from existing data
         uploadStatus: (existing.uploadStatus as ChatFileInfo['uploadStatus']) || file.uploadStatus,
         uploadDate: existing.uploadDate ? new Date(existing.uploadDate) : file.uploadDate,
