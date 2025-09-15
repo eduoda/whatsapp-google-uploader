@@ -9,13 +9,16 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "setup:termux": "bash scripts/setup-termux.sh",
     "clean": "rimraf dist",
+    "auth": "node dist/cli.js auth",
+    "setup": "node dist/cli.js setup",
+    "check": "node dist/cli.js check",
     "scan": "node dist/cli.js scan",
     "upload": "node dist/cli.js upload",
     "decrypt": "node dist/decrypt/index.js",
     "test": "npm run build && node tests/test.js --dry-run",
-    "test:live": "npm run build && node tests/test.js"
+    "test:live": "npm run build && node tests/test.js",
+    "setup:termux": "bash scripts/setup-termux.sh"
   },
   "keywords": [
     "whatsapp",

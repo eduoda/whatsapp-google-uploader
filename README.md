@@ -4,41 +4,29 @@
 
 ## ✨ Features
 
-### Core Functionality
 - **📱 Smart File Routing** - Photos/videos → Google Photos albums, Documents/audio → Google Drive folders
-- **🏷️ Intuitive Naming** - Albums and folders named after WhatsApp chat/group names
-- **🔄 Chat-Specific Uploads** - Upload media from specific chats with dedicated tracking sheets
 - **🔒 SHA-256 Deduplication** - Prevents duplicate uploads using content hashing
 - **📊 Per-Chat Tracking** - Individual Google Sheets for each chat with full upload history
-
-### Technical Excellence
 - **⚡ Zero-Copy Architecture** - Direct streaming without temporary files
 - **🛡️ Graceful Shutdown** - Saves state on Ctrl+C, resumes from exact point
 - **🎯 Adaptive Rate Limiting** - Smart quota management with exponential backoff
-- **☁️ Cloud-Based Persistence** - Google Sheets as database (no local storage needed)
-- **🔄 Auto-Resume System** - Automatic recovery from interruptions
+- **☁️ Cloud Persistence** - Google Sheets as database (no local storage needed)
 - **🌍 Cross-Platform** - Windows, macOS, Linux, and Android 11+ (Termux)
 
 ## 📦 Installation
 
 ### Desktop (Windows/macOS/Linux)
 ```bash
-# Clone repository
 git clone https://github.com/eduoda/whatsapp-google-uploader.git
 cd whatsapp-google-uploader
-
-# Install dependencies and build
 npm install --production
 npm run build
 ```
 
 ### Android (Termux)
 ```bash
-# Setup Termux environment
 pkg update && pkg install nodejs
 termux-setup-storage  # Grant storage permission
-
-# Clone and build
 git clone https://github.com/eduoda/whatsapp-google-uploader.git
 cd whatsapp-google-uploader
 npm install --production
@@ -61,12 +49,12 @@ npm run build
 
 ### 2. Authenticate
 ```bash
-node dist/cli.js auth
+npm run auth
 # Opens browser for Google login
 # Creates Google Sheets database automatically
 ```
 
-### 3. Decrypt WhatsApp Database
+### 3. Decrypt WhatsApp Database (Optional)
 ```bash
 # Install wa-crypt-tools
 pip install wa-crypt-tools
@@ -78,199 +66,108 @@ echo "WHATSAPP_BACKUP_KEY=your-64-character-hex-key" >> .env
 npm run decrypt
 ```
 
-### 4. Upload Media
+### 4. Scan WhatsApp Media
 ```bash
-# Upload from specific chat
-node dist/cli.js upload "Family Group"
-
-# Upload with options
-node dist/cli.js upload "Work Chat" --skip-failed --dry-run
+npm run scan                    # Auto-detect location
+npm run scan -- /custom/path    # Custom WhatsApp path
+npm run scan -- --dry-run       # Preview without saving to Sheets
 ```
 
-## 📖 Commands
-
-### Core Commands
-
-#### `auth` - Authenticate with Google
+### 5. Upload Media
 ```bash
-node dist/cli.js auth
-```
-Opens browser for Google authentication and saves tokens.
-
-#### `scan` - Scan WhatsApp Media
-```bash
-node dist/cli.js scan                    # Auto-detect location
-node dist/cli.js scan /path/to/whatsapp  # Custom path
-node dist/cli.js scan --dry-run          # Without saving to Sheets
-```
-Analyzes WhatsApp directory and saves chat metadata to Google Sheets.
-
-**Note**: Chat names can be edited directly in Google Sheets after scanning. Your custom names will be preserved in future scans.
-
-#### `upload` - Upload Media to Google
-```bash
-node dist/cli.js upload "Chat Name"      # Upload from specific chat
-node dist/cli.js upload "Chat Name" --skip-failed  # Skip previously failed files
-node dist/cli.js upload "Chat Name" --dry-run      # Preview what would be uploaded
+npm run upload -- "Chat Name"                      # Upload from specific chat
+npm run upload -- "Chat Name" --skip-failed        # Skip previously failed files
+npm run upload -- "Chat Name" --dry-run            # Preview what would be uploaded
 ```
 
-**Upload Features:**
-- Creates dedicated Google Sheets for each chat
-- Tracks upload status per file (pending/uploaded/failed)
-- Calculates SHA-256 hashes for deduplication
-- Creates Google Photos album and Drive folder per chat
-- Adaptive delay to respect API quotas
-- Graceful shutdown saves progress on Ctrl+C
+## 📖 Command Reference
 
-#### `decrypt` - Decrypt WhatsApp Database
-```bash
-npm run decrypt                           # Auto-detect path
-npm run decrypt -- /path/to/whatsapp     # Custom path
-npm run decrypt -- --key 0A1B2C3D...     # Direct hex key (64 chars)
-```
+### Main Commands
+
+| Command | Description | Options |
+|---------|-------------|---------|
+| `npm run auth` | Authenticate with Google | `--manual` - Use manual code entry |
+| `npm run scan` | Scan WhatsApp media and save to Sheets | `[path]` - Custom WhatsApp path<br>`--dry-run` - Skip Sheets saving |
+| `npm run upload` | Upload media from specific chat | `"Chat Name"` - Required chat name<br>`--skip-failed` - Skip failed files<br>`--dry-run` - Preview only |
+| `npm run decrypt` | Decrypt WhatsApp database | `[path]` - Custom WhatsApp path<br>`--key` - Direct hex key (64 chars) |
 
 ### Utility Commands
 
-#### `check` - Verify Configuration
-```bash
-node dist/cli.js check
-```
+| Command | Description |
+|---------|-------------|
+| `npm run check` | Verify configuration and authentication |
+| `npm run setup` | Create environment file template |
+| `npm test` | Run tests with mock data |
+| `npm run test:live` | Run tests with actual uploads |
 
-#### `setup` - Create Environment File
-```bash
-node dist/cli.js setup
-```
+### Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run build` | Build TypeScript to JavaScript |
+| `npm run dev` | Build and watch for changes |
+| `npm run clean` | Remove dist folder |
 
 ## 🏗️ Architecture
 
 ### Google Sheets Structure
 
 #### Main Sheet: `WhatsApp-Media-Tracker-YYYY-MM-DD`
-```
-┌─────────────────┬──────────────┬───┬─────────────┬─────────────────┐
-│ Nome do Chat    │ ID WhatsApp  │...│ Total Files │ Album/Folder ID │
-├─────────────────┼──────────────┼───┼─────────────┼─────────────────┤
-│ Family Group    │ 123@g.us     │...│ 1,234       │ album_xyz       │
-│ Work Team       │ 456@g.us     │...│ 567         │ folder_abc      │
-└─────────────────┴──────────────┴───┴─────────────┴─────────────────┘
-```
+Tracks all chats with metadata and upload statistics.
 
 #### Per-Chat Sheet: `[Chat-Name]_[JID]`
-```
-┌────────────┬─────────────┬──────────────┬───┬────────────────────┐
-│ Message ID │ File Name   │ SHA-256 Hash │...│ Upload Status      │
-├────────────┼─────────────┼──────────────┼───┼────────────────────┤
-│ msg_001    │ IMG001.jpg  │ a1b2c3d4...  │...│ uploaded           │
-│ msg_002    │ VID001.mp4  │ e5f6g7h8...  │...│ pending            │
-│ msg_003    │ IMG002.jpg  │ a1b2c3d4...  │...│ skipped (duplicate)│
-└────────────┴─────────────┴──────────────┴───┴────────────────────┘
-```
+Individual tracking for each chat's files with SHA-256 hashes and upload status.
+
+### Upload Organization
+
+- **Photos/Videos** → Google Photos album: `WA_[Chat-Name]_[JID]`
+- **Documents/Audio** → Google Drive folder: `/WhatsApp Google Uploader/[Chat-Name]_[JID]/`
 
 ### Quota Management
 
-The system implements adaptive delay between uploads:
-- **Initial delay**: 1.5 seconds
-- **On success**: Gradually reduces delay (min 1s)
-- **On quota error**: Exponential backoff (up to 60s)
-- **Batch updates**: Progress updates every 5 seconds
-- **Critical updates**: Success/failure saved immediately
+- **Initial delay**: 1.5 seconds between uploads
+- **Adaptive**: Reduces delay on success (min 1s)
+- **Backoff**: Exponential increase on quota errors (max 60s)
+- **Batch updates**: Progress saved every 5 seconds
+- **Critical saves**: Success/failure saved immediately
 
-### Deduplication System
+## 📊 Google Sheets Capabilities
 
-1. **SHA-256 hashing** of file content before upload
-2. **Hash stored** in Google Sheets for each file
-3. **Duplicate detection** across different messages
-4. **Skip upload** if same hash already uploaded
+### ✅ You CAN Safely:
+- **Reorder rows** - All lookups use unique IDs
+- **Edit chat names** - Custom names preserved across scans
+- **Apply filters and sorting** - Won't affect the system
+- **Hide rows or columns** - For visual organization
+- **Format cells** - Colors, fonts, etc.
+- **Add columns at the end** - For your own notes
 
-### Recent Improvements (v1.0.0)
-
-#### 🔧 Robustness Enhancements
-- **JID-based lookups**: Rows can be safely reordered in Google Sheets
-- **Manual name editing**: Edit chat names in sheets, preserved across scans
-- **Graceful shutdown**: CTRL+C saves current state before exiting
-- **Immediate persistence**: Critical operations saved instantly
-
-#### 📊 Smart Quota Management
-- **Adaptive delays**: Automatically adjusts based on API responses
-- **Exponential backoff**: Handles quota errors gracefully
-- **Batch optimization**: Reduces API calls while maintaining responsiveness
-
-#### 🔒 Data Integrity
-- **Content-based deduplication**: SHA-256 hashes prevent re-uploads
-- **State preservation**: Upload progress survives interruptions
-- **Error recovery**: Automatic retry with intelligent backoff
+### ❌ DO NOT:
+- Delete or move existing columns
+- Insert columns in the middle
+- Change column headers
 
 ## ⚠️ Known Limitations
 
-### API Limitations
-- **Google Photos API**: Does not provide checksums for integrity verification
-- **Google Drive API**: Provides MD5 but not currently used for verification
-- **Quota Limits**:
+- **Google Photos API**: No checksum verification available
+- **Google Drive API**: MD5 available but not implemented
+- **API Quotas**:
   - Google Sheets: 60 requests/minute/user
-  - Google Photos: Variable rate limits
-  - Google Drive: Similar per-minute quotas
+  - Google Photos/Drive: Variable rate limits
 
-### Google Sheets Capabilities
-**You CAN safely:**
-- ✅ **Reorder rows** - All lookups use unique IDs (JID for chats, messageId for files)
-- ✅ **Edit chat names** - Custom names are preserved across scans
-- ✅ **Apply filters and sorting** - Won't affect the system
-- ✅ **Hide rows or columns** - Visual organization
-- ✅ **Format cells** - Colors, fonts, etc.
-- ✅ **Add columns at the end** - For your own notes
+## 🛠️ Project Structure
 
-**DO NOT:**
-- ❌ Delete or move existing columns (breaks column mapping)
-- ❌ Insert columns in the middle (shifts indices)
-- ❌ Change column headers (cosmetic only, but may confuse)
-
-## 🧪 Testing
-
-```bash
-# Run tests with mock data (no uploads)
-npm test
-
-# Run tests with actual uploads
-npm run test:live
-
-# Test with custom WhatsApp directory
-node tests/test.js /path/to/whatsapp
-```
-
-## 📝 Recent Updates
-
-### Version 1.0.0 (Current)
-- ✅ **TASK-023**: Chat-specific upload with dedicated tracking sheets
-- ✅ **TASK-030**: SHA-256 deduplication system
-- ✅ Adaptive rate limiting for quota management
-- ✅ Graceful shutdown with state persistence
-- ✅ Fixed column index issues in Google Sheets updates
-- ✅ Immediate persistence for critical operations
-- ✅ Smart batch updates for progress tracking
-
-## 🛠️ Development
-
-### Project Structure
 ```
 whatsapp-google-uploader/
 ├── src/
-│   ├── cli/               # CLI commands and application
-│   ├── scanner/           # WhatsApp directory scanner
-│   ├── google-apis/       # Google Photos/Drive/Sheets APIs
-│   ├── database/          # Google Sheets database layer
-│   ├── uploader/          # Upload manager with deduplication
-│   ├── chat-metadata/     # Chat analysis and metadata
-│   └── decrypt/           # WhatsApp database decryption
-├── tests/                 # Test suite with mock data
-├── memory-system/         # Development documentation
+│   ├── cli/               # CLI commands
+│   ├── scanner/           # WhatsApp scanner
+│   ├── google-apis/       # Google APIs integration
+│   ├── database/          # Sheets database layer
+│   ├── uploader/          # Upload manager
+│   ├── chat-metadata/     # Chat analysis
+│   └── decrypt/           # Database decryption
+├── tests/                 # Test suite
 └── credentials.json       # Google OAuth credentials
-```
-
-### Build Commands
-```bash
-npm run build              # Build TypeScript
-npm run dev                # Build and watch
-npm run clean              # Remove dist folder
 ```
 
 ## 📄 License
