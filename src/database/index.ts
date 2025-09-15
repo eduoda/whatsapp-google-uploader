@@ -919,13 +919,15 @@ export class SheetsDatabase {
 
     try {
       // Get all chats to find the row for this JID
+      // AIDEV-NOTE: jid-lookup-fix; fetch B:AD to get JID and album/folder info
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.chatMetadataSpreadsheetId,
-        range: `${this.CHAT_METADATA_SHEET}!B:AC` // B=JID, Z=album, AB=folder
+        range: `${this.CHAT_METADATA_SHEET}!B:AD` // B=JID, AA=album, AC=folder
       });
 
       const rows = response.data.values || [];
-      const chatRow = rows.find(row => row[1] === chatJid); // Column B (index 1)
+      // AIDEV-NOTE: row-reordering-support; use JID lookup instead of position
+      const chatRow = rows.find(row => row[0] === chatJid); // Column B is index 0 when fetching B:AD
 
       if (!chatRow) {
         return null;
@@ -933,7 +935,8 @@ export class SheetsDatabase {
 
       const result: { albumId?: string; folderId?: string } = {};
 
-      // Extract album ID from column Z (index 25)
+      // Extract album ID from column AA (26th letter = index 25 from B)
+      // When fetching B:AD, column AA is at index 25 (B=0, C=1... AA=25)
       if (chatRow[25]) {
         const albumData = chatRow[25].split('|');
         if (albumData.length > 1) {
@@ -941,7 +944,8 @@ export class SheetsDatabase {
         }
       }
 
-      // Extract folder ID from column AB (index 27)
+      // Extract folder ID from column AC (28th letter = index 27 from B)
+      // When fetching B:AD, column AC is at index 27 (B=0, C=1... AC=27)
       if (chatRow[27]) {
         const folderData = chatRow[27].split('|');
         if (folderData.length > 1) {
