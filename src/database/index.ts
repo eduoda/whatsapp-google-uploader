@@ -638,6 +638,8 @@ export class SheetsDatabase {
       rows.forEach(row => {
         if (row[1]) { // chatJid
           existingData.set(row[1], {
+            // AIDEV-NOTE: preserve-edited-name; preserve manually edited chat name from column A
+            chatName: row[0] || '', // Column A - chat name that may have been edited
             // Preserve sync status (columns 16-22)
             lastSyncDate: row[15] || '',
             lastUploadedFile: row[16] || '',
@@ -676,6 +678,8 @@ export class SheetsDatabase {
   private mergeWithExisting(newChat: ChatMetadata, existing: any): ChatMetadata {
     return {
       ...newChat,
+      // AIDEV-NOTE: manual-name-edit; preserve manually edited chat name if it exists
+      chatName: existing?.chatName || newChat.chatName,
       // Preserve sync status if exists
       lastSyncDate: existing?.lastSyncDate ? new Date(existing.lastSyncDate) : undefined,
       lastUploadedFile: existing?.lastUploadedFile || newChat.lastUploadedFile,
