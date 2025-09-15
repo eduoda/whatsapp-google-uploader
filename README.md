@@ -105,6 +105,8 @@ node dist/cli.js scan --dry-run          # Without saving to Sheets
 ```
 Analyzes WhatsApp directory and saves chat metadata to Google Sheets.
 
+**Note**: Chat names can be edited directly in Google Sheets after scanning. Your custom names will be preserved in future scans.
+
 #### `upload` - Upload Media to Google
 ```bash
 node dist/cli.js upload "Chat Name"      # Upload from specific chat
@@ -180,6 +182,24 @@ The system implements adaptive delay between uploads:
 3. **Duplicate detection** across different messages
 4. **Skip upload** if same hash already uploaded
 
+### Recent Improvements (v1.0.0)
+
+#### 🔧 Robustness Enhancements
+- **JID-based lookups**: Rows can be safely reordered in Google Sheets
+- **Manual name editing**: Edit chat names in sheets, preserved across scans
+- **Graceful shutdown**: CTRL+C saves current state before exiting
+- **Immediate persistence**: Critical operations saved instantly
+
+#### 📊 Smart Quota Management
+- **Adaptive delays**: Automatically adjusts based on API responses
+- **Exponential backoff**: Handles quota errors gracefully
+- **Batch optimization**: Reduces API calls while maintaining responsiveness
+
+#### 🔒 Data Integrity
+- **Content-based deduplication**: SHA-256 hashes prevent re-uploads
+- **State preservation**: Upload progress survives interruptions
+- **Error recovery**: Automatic retry with intelligent backoff
+
 ## ⚠️ Known Limitations
 
 ### API Limitations
@@ -190,17 +210,19 @@ The system implements adaptive delay between uploads:
   - Google Photos: Variable rate limits
   - Google Drive: Similar per-minute quotas
 
-### Google Sheets Restrictions
-**DO NOT manually:**
-- ❌ Reorder rows (breaks position-based updates)
-- ❌ Delete or move columns (breaks index-based reading)
-- ❌ Insert columns in the middle (shifts indices)
+### Google Sheets Capabilities
+**You CAN safely:**
+- ✅ **Reorder rows** - All lookups use unique IDs (JID for chats, messageId for files)
+- ✅ **Edit chat names** - Custom names are preserved across scans
+- ✅ **Apply filters and sorting** - Won't affect the system
+- ✅ **Hide rows or columns** - Visual organization
+- ✅ **Format cells** - Colors, fonts, etc.
+- ✅ **Add columns at the end** - For your own notes
 
-**Safe to do:**
-- ✅ Apply filters and sorting views
-- ✅ Hide rows or columns
-- ✅ Add columns at the end
-- ✅ Format cells (colors, fonts)
+**DO NOT:**
+- ❌ Delete or move existing columns (breaks column mapping)
+- ❌ Insert columns in the middle (shifts indices)
+- ❌ Change column headers (cosmetic only, but may confuse)
 
 ## 🧪 Testing
 
