@@ -138,6 +138,28 @@ export class WhatsAppDecryptor {
     }
   }
 
+  async findWaDbCryptFile(): Promise<string | null> {
+    const backupsPath = path.join(this.whatsappPath, 'Backups');
+
+    try {
+      const files = await fs.readdir(backupsPath);
+      const waDbFile = files.find(f => f === 'wa.db.crypt15' || f === 'wa.db.crypt14');
+
+      if (!waDbFile) {
+        console.log('\n⚠️  No encrypted wa.db file found.');
+        console.log(`Searched in: ${backupsPath}\n`);
+        return null;
+      }
+
+      console.log(`\n📂 Found wa.db: ${waDbFile}`);
+      return path.join(backupsPath, waDbFile);
+    } catch (error) {
+      console.error(`\n❌ Cannot access WhatsApp backups directory: ${backupsPath}`);
+      console.log('Make sure the path exists and you have read permissions.\n');
+      return null;
+    }
+  }
+
   async decryptFile(cryptFile: string, outputFile: string): Promise<boolean> {
     console.log(`\n📦 Decrypting: ${path.basename(cryptFile)}`);
 
@@ -283,6 +305,7 @@ export class WhatsAppDecryptor {
     const outputFile = path.join(this.outputDir, `msgstore-${cryptInfo.date}.db`);
 
     // Check if already decrypted from the same backup
+    let skipMsgstoreDecrypt = false;
     if (await this.isAlreadyDecrypted(cryptInfo.date, outputFile)) {
       // Create a symlink to msgstore.db for compatibility
       const symlinkPath = path.join(this.outputDir, 'msgstore.db');
@@ -292,68 +315,105 @@ export class WhatsAppDecryptor {
       try {
         await fs.symlink(path.basename(outputFile), symlinkPath);
       } catch {}
-      return true;
+      skipMsgstoreDecrypt = true;
+
+      // Skip the cleanup and prompt if msgstore is already decrypted
+      // Go directly to wa.db processing
+    } else {
+      // Clean old decrypted files (keep the one we're about to create)
+      await this.cleanOldDecryptedFiles(cryptInfo.date);
+
+      // Check if any older decrypted file exists
+      try {
+        const files = await fs.readdir(this.outputDir);
+        const existingDb = files.find(f => f.startsWith('msgstore-') && f.endsWith('.db'));
+
+        if (existingDb) {
+          const existingPath = path.join(this.outputDir, existingDb);
+          const stats = await fs.stat(existingPath);
+          const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+          const existingDate = this.extractDateFromFilename(existingDb);
+
+          console.log(`\n⚠️  Found older decrypted database from ${existingDate}: ${existingDb} (${sizeMB} MB)`);
+          console.log(`   A newer backup from ${cryptInfo.date} is available for decryption.\n`);
+
+          const readline = require('readline');
+          const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+          });
+
+          const answer = await new Promise<string>((resolve) => {
+            rl.question('Do you want to decrypt the newer backup? (Y/n): ', resolve);
+          });
+          rl.close();
+
+          if (answer.toLowerCase() === 'n') {
+            console.log(`Using existing database from ${existingDate}.\n`);
+            // Create symlink to the existing file
+            const symlinkPath = path.join(this.outputDir, 'msgstore.db');
+            try {
+              await fs.unlink(symlinkPath);
+            } catch {}
+            try {
+              await fs.symlink(existingDb, symlinkPath);
+            } catch {}
+            skipMsgstoreDecrypt = true;
+          }
+        }
+      } catch {
+        // Directory doesn't exist or can't be accessed
+      }
     }
 
-    // Clean old decrypted files (keep the one we're about to create)
-    await this.cleanOldDecryptedFiles(cryptInfo.date);
+    // Decrypt the msgstore file if not skipped
+    let success = skipMsgstoreDecrypt;
 
-    // Check if any older decrypted file exists
-    try {
-      const files = await fs.readdir(this.outputDir);
-      const existingDb = files.find(f => f.startsWith('msgstore-') && f.endsWith('.db'));
+    if (!skipMsgstoreDecrypt) {
+      success = await this.decryptFile(cryptInfo.path, outputFile);
 
-      if (existingDb) {
-        const existingPath = path.join(this.outputDir, existingDb);
-        const stats = await fs.stat(existingPath);
-        const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
-        const existingDate = this.extractDateFromFilename(existingDb);
-
-        console.log(`\n⚠️  Found older decrypted database from ${existingDate}: ${existingDb} (${sizeMB} MB)`);
-        console.log(`   A newer backup from ${cryptInfo.date} is available for decryption.\n`);
-
-        const readline = require('readline');
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout
-        });
-
-        const answer = await new Promise<string>((resolve) => {
-          rl.question('Do you want to decrypt the newer backup? (Y/n): ', resolve);
-        });
-        rl.close();
-
-        if (answer.toLowerCase() === 'n') {
-          console.log(`Using existing database from ${existingDate}.\n`);
-          // Create symlink to the existing file
-          const symlinkPath = path.join(this.outputDir, 'msgstore.db');
-          try {
-            await fs.unlink(symlinkPath);
-          } catch {}
-          try {
-            await fs.symlink(existingDb, symlinkPath);
-          } catch {}
-          return true;
+      if (success) {
+        // Create a symlink to msgstore.db for compatibility
+        const symlinkPath = path.join(this.outputDir, 'msgstore.db');
+        try {
+          await fs.unlink(symlinkPath);
+        } catch {}
+        try {
+          await fs.symlink(path.basename(outputFile), symlinkPath);
+          console.log(`\n📎 Created symlink: msgstore.db → ${path.basename(outputFile)}`);
+        } catch {
+          // Symlink creation failed (might be on Windows), no problem
         }
       }
-    } catch {
-      // Directory doesn't exist or can't be accessed
     }
 
-    // Decrypt the file
-    const success = await this.decryptFile(cryptInfo.path, outputFile);
+    // Now decrypt wa.db if available (always check, even if msgstore was skipped)
+    const waDbPath = await this.findWaDbCryptFile();
+    let waDbSuccess = false;
 
-    if (success) {
-      // Create a symlink to msgstore.db for compatibility
-      const symlinkPath = path.join(this.outputDir, 'msgstore.db');
+    if (waDbPath) {
+      const waDbOutput = path.join(this.outputDir, 'wa.db');
+
+      // Check if wa.db already exists
+      let needsWaDbDecrypt = true;
       try {
-        await fs.unlink(symlinkPath);
-      } catch {}
-      try {
-        await fs.symlink(path.basename(outputFile), symlinkPath);
-        console.log(`\n📎 Created symlink: msgstore.db → ${path.basename(outputFile)}`);
+        await fs.stat(waDbOutput);
+        console.log('\n✅ wa.db already decrypted!');
+        needsWaDbDecrypt = false;
+        waDbSuccess = true;
       } catch {
-        // Symlink creation failed (might be on Windows), no problem
+        // wa.db doesn't exist, needs decryption
+      }
+
+      if (needsWaDbDecrypt) {
+        console.log('\n🔐 Decrypting wa.db for chat metadata...');
+        waDbSuccess = await this.decryptFile(waDbPath, waDbOutput);
+
+        if (waDbSuccess) {
+          console.log('✅ wa.db decrypted successfully!');
+        } else {
+          console.log('⚠️  Failed to decrypt wa.db - will use alternative methods for chat metadata');
+        }
       }
     }
 
@@ -361,9 +421,12 @@ export class WhatsAppDecryptor {
     console.log('\n================================\n');
     if (success) {
       console.log(`✅ Decryption complete!`);
-      console.log(`📁 Output: ${outputFile}`);
+      console.log(`📁 Message database: ${outputFile}`);
+      if (waDbSuccess) {
+        console.log(`📁 Chat metadata: ${path.join(this.outputDir, 'wa.db')}`);
+      }
       console.log(`📅 Database date: ${cryptInfo.date}\n`);
-      console.log('💡 Database is now available for chat analysis.\n');
+      console.log('💡 Databases are now available for chat analysis.\n');
       return true;
     } else {
       console.error(`❌ Failed to decrypt the backup.\n`);

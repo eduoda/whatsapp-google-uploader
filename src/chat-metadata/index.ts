@@ -17,6 +17,8 @@ import {
   ChatExtractorConfig,
   DEFAULT_CHAT_CONFIG
 } from './types.js';
+import { GoogleContactsService } from '../google-contacts/index.js';
+import { OAuth2Client } from 'google-auth-library';
 
 /**
  * Extracts chat metadata from WhatsApp msgstore.db for Google Sheets integration
@@ -24,14 +26,20 @@ import {
 export class ChatMetadataExtractor {
   private config: ChatExtractorConfig;
   private mediaPath?: string;
+  private googleContacts?: GoogleContactsService;
 
-  constructor(config?: Partial<ChatExtractorConfig>, mediaPath?: string) {
+  constructor(config?: Partial<ChatExtractorConfig>, mediaPath?: string, authClient?: OAuth2Client) {
     // AIDEV-NOTE: Default to ./decrypted/msgstore.db created by decrypt command
     this.config = {
       msgstoreDbPath: config?.msgstoreDbPath || './decrypted/msgstore.db',
       defaults: { ...DEFAULT_CHAT_CONFIG, ...config?.defaults }
     };
     this.mediaPath = mediaPath;
+
+    // Initialize Google Contacts if auth client is provided
+    if (authClient) {
+      this.googleContacts = new GoogleContactsService(authClient);
+    }
   }
 
   /**
@@ -48,6 +56,14 @@ export class ChatMetadataExtractor {
       }
 
       console.log('\n📱 Starting WhatsApp database analysis...');
+
+      // Load Google Contacts FIRST if available
+      if (this.googleContacts) {
+        console.log('  0️⃣  Loading Google Contacts...');
+        await this.googleContacts.loadContacts();
+        const googleContactsCount = this.googleContacts.getCacheSize();
+        console.log(`     ✓ Loaded ${googleContactsCount} contacts from Google`);
+      }
 
       console.log('  1️⃣  Extracting chat list...');
       const rawChats = this.extractRawChatData();
@@ -68,7 +84,7 @@ export class ChatMetadataExtractor {
       // Extract contact names from vCards
       console.log('\n  4️⃣  Extracting contact names...');
       const contactNames = this.extractContactNames();
-      console.log(`     ✓ Found names for ${contactNames.size} contacts`);
+      console.log(`     ✓ Found names for ${contactNames.size} contacts from vCards`);
 
       // AIDEV-NOTE: Skip file analysis as we can't reliably map files to chats without database
       // Using database media counts which are accurate per chat
@@ -140,7 +156,7 @@ export class ChatMetadataExtractor {
       const query = `
         SELECT DISTINCT
           j.raw_string as jid,
-          COALESCE(c.subject, j.raw_string) as displayName,
+          COALESCE(ldn.display_name, c.subject, j.raw_string) as displayName,
           CASE
             WHEN j.raw_string LIKE '%@g.us' THEN 1
             ELSE 0
@@ -149,6 +165,7 @@ export class ChatMetadataExtractor {
           c.last_message_row_id as lastMessageTimestamp
         FROM jid j
         INNER JOIN chat c ON c.jid_row_id = j._id
+        LEFT JOIN lid_display_name ldn ON ldn.lid_row_id = c.jid_row_id
         WHERE j.raw_string IS NOT NULL
         AND j.raw_string != ''
         AND (j.raw_string LIKE '%@s.whatsapp.net' OR j.raw_string LIKE '%@g.us')
@@ -159,13 +176,30 @@ export class ChatMetadataExtractor {
 
       const rows = db.prepare(query).all() as any[];
 
-      return rows.map(row => ({
-        jid: row.jid,
-        displayName: row.displayName || row.jid.split('@')[0], // Fallback to JID prefix
-        chatType: row.chatType,
-        createdTimestamp: row.createdTimestamp,
-        lastMessageTimestamp: row.lastMessageTimestamp
-      }));
+      return rows.map(row => {
+        let displayName = row.displayName;
+
+        // ALWAYS prioritize Google Contacts for individual chats when available
+        if (this.googleContacts && row.chatType === 0) {
+          const googleName = this.googleContacts.getContactName(row.jid);
+          if (googleName) {
+            displayName = googleName; // Google Contacts takes priority
+          }
+        }
+
+        // For groups, keep the subject from WhatsApp
+        if (row.chatType === 1 && row.displayName) {
+          displayName = row.displayName;
+        }
+
+        return {
+          jid: row.jid,
+          displayName: displayName || row.jid.split('@')[0], // Fallback to JID prefix
+          chatType: row.chatType,
+          createdTimestamp: row.createdTimestamp,
+          lastMessageTimestamp: row.lastMessageTimestamp
+        };
+      });
 
     } finally {
       db.close();
@@ -354,8 +388,11 @@ export class ChatMetadataExtractor {
       return ts ? new Date(ts) : undefined;
     };
 
-    // Use contact name if available, otherwise use display name
-    const finalName = contactName || rawChat.displayName;
+    // rawChat.displayName already has Google Contacts name if available (from extractRawChatData)
+    // Only use vCard contactName if displayName is just a number
+    const finalName = rawChat.displayName.match(/^\d+$/) && contactName
+      ? contactName
+      : rawChat.displayName;
 
     return {
       // AIDEV-NOTE: Core chat identification

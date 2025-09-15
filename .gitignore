@@ -132,3 +132,5 @@ tests/mock-whatsapp/Android/
 .eslintcache
 client_secret*.json
 tokens/
+decrypted/wa.db-shm
+decrypted/wa.db-wal

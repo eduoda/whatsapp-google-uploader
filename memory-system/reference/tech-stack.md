@@ -1,468 +1,218 @@
 # Technology Stack - WhatsApp Google Uploader
 
 ## Overview
-This document provides a comprehensive overview of all technologies, frameworks, libraries, and tools used in the WhatsApp Google Uploader project.
+This document provides the actual technology stack used in the WhatsApp Google Uploader project as of the production-ready release (v1.0.0).
 
 ---
 
 ## Runtime Environment
 - **Platform:** Node.js CLI Application
-- **Node.js Version:** >= 14.0.0 (ES6+ features, async/await, classes)
+- **Node.js Version:** >= 14.0.0 (ES6+ features, async/await, TypeScript support)
 - **Target Platforms:** Windows, macOS, Linux, Android (Termux)
-- **Package Manager:** npm (primary)
+- **Package Manager:** npm
 
-## Core Dependencies
+## Core Dependencies (Production)
 
 ### CLI Framework
-- **commander.js**: Command parsing and help generation
-- **inquirer**: Interactive prompts for user input  
-- **ora**: Terminal spinners for progress indication
-- **chalk**: Terminal string styling for colored output
+- **commander.js v14.0.1**: Command parsing and CLI interface
+- **Node.js readline**: Interactive prompts and user input
 
 ### Google API Integration
-- **googleapis**: Official Google APIs client library
-- **google-auth-library**: OAuth2 authentication and token management
+- **googleapis v126.0.1**: Official Google APIs client library
+- **google-auth-library v9.0.0**: OAuth2 authentication and token management
 - **Required APIs**:
   - Google Photos Library API
   - Google Drive API v3
+  - Google Sheets API v4 (for database functionality)
   - OAuth2 API for authentication
 
-### File Processing
+### File Processing & Utilities
 - **Node.js Streams**: Native streaming for memory-efficient file processing
 - **crypto**: Native module for SHA-256 hash calculation
 - **fs/promises**: Async file system operations
 - **path**: Cross-platform path manipulation
+- **mime-types v2.1.35**: MIME type detection for smart file routing
 
-### Data Storage
-- **Google Sheets API v4**: Cloud-based database for progress tracking and deduplication (zero-install, cross-platform)
+### Database & HTTP
+- **better-sqlite3 v11.3.0**: SQLite3 database for WhatsApp msgstore.db reading
+- **axios v1.12.1**: HTTP client for API requests
+- **Google Sheets API v4**: Cloud-based database for progress tracking and deduplication
+
+### Configuration
+- **dotenv v17.2.2**: Environment variable management for credentials
 
 ## Development Dependencies
-- **jest**: Testing framework for unit, integration, and e2e tests
-- **eslint**: Code linting with strict JavaScript standards
-- **nodemon**: Development server with auto-restart (development)
-- **npm-audit**: Security vulnerability checking
 
-## Configuration Management
-- **config files**: JSON-based configuration with environment overrides
-- **dotenv**: Environment variable management for credentials
-- **joi**: Configuration validation and schema enforcement
+### TypeScript & Build Tools
+- **typescript v5.9.2**: TypeScript compiler
+- **@types/node v20.19.14**: Node.js type definitions
+- **@types/better-sqlite3 v7.6.11**: better-sqlite3 type definitions
+- **@types/mime-types v2.1.4**: mime-types type definitions
+- **rimraf v5.0.10**: Cross-platform file deletion for build cleanup
+
+## Architecture Decisions
+
+### Database Strategy
+- **Primary Storage:** Google Sheets (cloud-based, zero-install, cross-platform)
+- **Local Database:** better-sqlite3 (only for reading WhatsApp msgstore.db)
+- **No Local Persistence:** All progress/state stored in Google Sheets
 
 ### Authentication & Authorization
-- **Strategy:** [JWT | Session | OAuth2 | SAML]
-- **Library:** [Passport | Auth0 | Firebase Auth]
-- **Token Storage:** [Redis | In-memory | Database]
-- **MFA Support:** [Yes | No] - [TOTP | SMS | Email]
+- **Strategy:** Google OAuth2 with desktop app flow
+- **Scope:** Minimal required permissions (photos.append, drive.file, sheets)
+- **Token Storage:** Local file system with secure permissions
+- **Credential Management:** JSON file (credentials.json) + .env for backup keys
 
-### Key Dependencies
-| Package | Version | Purpose |
-|---------|---------|---------|
-| [ORM/ODM] | X.X.X | [Prisma | TypeORM | Sequelize | Mongoose] |
-| [Validation] | X.X.X | [Joi | Yup | Zod | class-validator] |
-| [Logging] | X.X.X | [Winston | Pino | Morgan | Bunyan] |
-| [Security] | X.X.X | [Helmet | cors | bcrypt | argon2] |
-| [Testing] | X.X.X | [Jest | Mocha | Vitest] |
+### File Processing Architecture
+- **Zero-Copy Streaming:** Direct file streams from source to Google APIs
+- **Content-Based Hashing:** SHA-256 for duplicate detection
+- **Smart Routing:** Photos/videos → Google Photos, Documents/audio → Google Drive
+- **No Temporary Files:** Stream directly without intermediate storage
 
----
-
-## Database Technologies
-
-### Primary Database
-- **Type:** [Relational | Document | Key-Value | Graph]
-- **System:** [PostgreSQL | MySQL | MongoDB | DynamoDB | Neo4j]
-- **Version:** X.X.X
-- **Hosting:** [Self-hosted | RDS | Atlas | Cloud SQL]
-
-### Database Tools
-| Tool | Version | Purpose |
-|------|---------|---------|
-| ORM/ODM | X.X.X | [Prisma | TypeORM | Mongoose | Sequelize] |
-| Migration Tool | X.X.X | [Prisma Migrate | TypeORM | Knex | Flyway] |
-| Query Builder | X.X.X | [Knex | Kysely | Drizzle] |
-| Connection Pool | X.X.X | [pg-pool | mysql2] |
-
-### Caching Layer
-- **System:** [Redis | Memcached | Hazelcast]
-- **Version:** X.X.X
-- **Use Cases:**
-  - Session storage
-  - API response caching
-  - Rate limiting
-  - Pub/Sub messaging
-
-### Search Engine
-- **System:** [Elasticsearch | Algolia | MeiliSearch | Typesense]
-- **Version:** X.X.X
-- **Use Cases:** [Full-text search | Analytics | Logging]
-
-### Message Queue
-- **System:** [RabbitMQ | Kafka | AWS SQS | Redis Pub/Sub]
-- **Version:** X.X.X
-- **Use Cases:** [Async processing | Event streaming | Task queues]
-
----
-
-## Infrastructure & DevOps
-
-### Cloud Provider
-- **Primary:** [AWS | Google Cloud | Azure | DigitalOcean]
-- **Services Used:**
-  | Service | Purpose |
-  |---------|---------|
-  | [Compute] | [EC2 | Cloud Run | App Service] |
-  | [Storage] | [S3 | Cloud Storage | Blob Storage] |
-  | [Database] | [RDS | Cloud SQL | Cosmos DB] |
-  | [CDN] | [CloudFront | Cloud CDN | Azure CDN] |
-  | [DNS] | [Route 53 | Cloud DNS] |
-
-### Containerization
-- **Container Runtime:** Docker - v.X.X.X
-- **Registry:** [Docker Hub | ECR | GCR | ACR | Private]
-- **Base Images:**
-  - Frontend: [node:alpine | nginx:alpine]
-  - Backend: [node:alpine | python:slim | golang:alpine]
-
-### Orchestration
-- **Platform:** [Kubernetes | Docker Swarm | ECS | Cloud Run]
-- **Version:** X.X.X
-- **Tools:**
-  - [Helm] - Chart management
-  - [Kubectl] - Cluster management
-  - [K9s] - Cluster UI
-
-### Infrastructure as Code
-- **Tool:** [Terraform | CloudFormation | Pulumi | CDK]
-- **Version:** X.X.X
-- **State Management:** [S3 | Terraform Cloud | Local]
-
-### CI/CD Pipeline
-- **Platform:** [GitHub Actions | GitLab CI | Jenkins | CircleCI]
-- **Stages:**
-  1. Lint & Format Check
-  2. Unit Tests
-  3. Build
-  4. Integration Tests
-  5. Security Scan
-  6. Deploy to Staging
-  7. E2E Tests
-  8. Deploy to Production
-
-### Monitoring & Observability
-| Category | Tool | Purpose |
-|----------|------|---------|
-| APM | [New Relic | DataDog | AppDynamics] | Application monitoring |
-| Metrics | [Prometheus | CloudWatch | Azure Monitor] | System metrics |
-| Logging | [ELK Stack | CloudWatch Logs | Datadog Logs] | Log aggregation |
-| Tracing | [Jaeger | Zipkin | AWS X-Ray] | Distributed tracing |
-| Error Tracking | [Sentry | Rollbar | Bugsnag] | Error monitoring |
-| Uptime | [Pingdom | UptimeRobot | StatusCake] | Availability monitoring |
-
----
-
-## Development Tools
-
-### Version Control
-- **System:** Git
-- **Platform:** [GitHub | GitLab | Bitbucket | Azure DevOps]
-- **Branch Strategy:** [Git Flow | GitHub Flow | GitLab Flow]
-- **Branch Protection:**
-  - Require PR reviews
-  - Run CI checks
-  - No direct commits to main
-
-### Code Quality Tools
-| Tool | Version | Configuration |
-|------|---------|---------------|
-| Linter | X.X.X | [ESLint | TSLint | Pylint | golangci-lint] |
-| Formatter | X.X.X | [Prettier | Black | gofmt | rustfmt] |
-| Type Checker | X.X.X | [TypeScript | MyPy | Flow] |
-| Security Scanner | X.X.X | [Snyk | OWASP | Trivy] |
-| Dependency Checker | X.X.X | [npm audit | Safety | Nancy] |
-
-### Testing Framework
-| Type | Framework | Version | Coverage Target |
-|------|-----------|---------|----------------|
-| Unit | [Jest | Vitest | Pytest | go test] | X.X.X | >80% |
-| Integration | [Supertest | TestContainers] | X.X.X | Critical paths |
-| E2E | [Cypress | Playwright | Selenium] | X.X.X | User journeys |
-| Performance | [K6 | JMeter | Gatling] | X.X.X | Load testing |
-| Security | [OWASP ZAP | Burp Suite] | X.X.X | Vulnerability testing |
-
-### Documentation Tools
-- **API Docs:** [Swagger | Postman | Insomnia]
-- **Code Docs:** [JSDoc | TypeDoc | Sphinx]
-- **Architecture:** [C4 Model | Draw.io | Mermaid]
-- **Wiki:** [Confluence | Notion | GitBook]
-
-### Development Environment
-| Tool | Purpose |
-|------|---------|
-| IDE | [VS Code | IntelliJ | WebStorm] |
-| API Client | [Postman | Insomnia | Thunder Client] |
-| Database Client | [DBeaver | TablePlus | pgAdmin] |
-| Container Tool | [Docker Desktop | Rancher Desktop] |
-| Terminal | [iTerm2 | Windows Terminal | Warp] |
-
----
-
-## Security Stack
-
-### Authentication
-- **Method:** [JWT | OAuth2 | SAML | OpenID Connect]
-- **Provider:** [Auth0 | AWS Cognito | Firebase Auth | Keycloak | Custom]
-- **Token Management:**
-  - Access Token TTL: [15 minutes]
-  - Refresh Token TTL: [7 days]
-  - Token Rotation: [Enabled | Disabled]
-
-### Secrets Management
-- **Tool:** [HashiCorp Vault | AWS Secrets Manager | Azure Key Vault | Doppler]
-- **Environment Variables:** [dotenv | direnv]
-- **Encryption:** [At rest: AES-256 | In transit: TLS 1.3]
-
-### Security Headers
-```javascript
-// Example security headers configuration
-{
-  "X-Frame-Options": "DENY",
-  "X-Content-Type-Options": "nosniff",
-  "X-XSS-Protection": "1; mode=block",
-  "Strict-Transport-Security": "max-age=31536000",
-  "Content-Security-Policy": "default-src 'self'"
-}
-```
-
-### Compliance & Standards
-- **Standards:** [OWASP Top 10 | PCI DSS | GDPR | HIPAA | SOC 2]
-- **Security Scanning:** [Regular | On commit | Weekly]
-- **Penetration Testing:** [Quarterly | Annually]
-
----
-
-## Package Management
-
-### Frontend Dependencies
-```json
-{
-  "dependencies": {
-    // Production dependencies
-  },
-  "devDependencies": {
-    // Development dependencies
-  }
-}
-```
-
-### Backend Dependencies
-```json
-{
-  "dependencies": {
-    // Production dependencies
-  },
-  "devDependencies": {
-    // Development dependencies
-  }
-}
-```
-
-### Dependency Update Strategy
-- **Frequency:** [Weekly | Monthly | Quarterly]
-- **Tool:** [Dependabot | Renovate | npm-check-updates]
-- **Testing:** Automated tests on dependency updates
-
----
-
-## Environment Configuration
+## Production Configuration
 
 ### Required Environment Variables
 ```bash
-# Application
-NODE_ENV=[development|staging|production]
-PORT=3000
-API_URL=https://api.example.com
+# Optional - WhatsApp Database Decryption
+WHATSAPP_BACKUP_KEY=64-character-hex-key-for-crypt15-decryption
 
-# Database
-DATABASE_URL=postgresql://user:pass@host:port/db
-REDIS_URL=redis://host:port
-
-# Authentication
-JWT_SECRET=your-secret-key
-JWT_EXPIRES_IN=15m
-REFRESH_TOKEN_EXPIRES_IN=7d
-
-# External Services
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-STRIPE_API_KEY=
-SENDGRID_API_KEY=
-
-# Monitoring
-SENTRY_DSN=
-NEW_RELIC_LICENSE_KEY=
+# Auto-created by OAuth flow
+GOOGLE_CLIENT_ID=auto-generated-from-credentials.json
+GOOGLE_CLIENT_SECRET=auto-generated-from-credentials.json
 ```
 
-### Configuration Management
-- **Development:** `.env.local` (git ignored)
-- **Staging:** Environment variables in CI/CD
-- **Production:** Secrets manager or K8s secrets
-
----
-
-## Mobile/Desktop (if applicable)
-
-### Mobile Framework
-- **Framework:** [React Native | Flutter | Ionic | Native]
-- **Version:** X.X.X
-- **Target Platforms:** [iOS | Android | Both]
-
-### Desktop Framework
-- **Framework:** [Electron | Tauri | Native]
-- **Version:** X.X.X
-- **Target Platforms:** [Windows | macOS | Linux]
-
----
-
-## API Integrations
-
-### Third-Party Services
-| Service | Purpose | SDK Version |
-|---------|---------|-------------|
-| [Payment] | [Stripe | PayPal | Square] | X.X.X |
-| [Email] | [SendGrid | SES | Mailgun] | X.X.X |
-| [SMS] | [Twilio | Vonage | AWS SNS] | X.X.X |
-| [Storage] | [AWS S3 | Cloudinary | Uploadcare] | X.X.X |
-| [Analytics] | [Google Analytics | Mixpanel | Amplitude] | X.X.X |
-| [Maps] | [Google Maps | Mapbox | HERE] | X.X.X |
-
----
-
-## Performance Optimization
-
-### Frontend Optimization
-- **Code Splitting:** [Enabled | Disabled]
-- **Lazy Loading:** [Routes | Components | Images]
-- **Bundle Size:** Target < [X]KB
-- **Caching Strategy:** [Service Workers | HTTP Cache Headers]
-- **CDN:** [CloudFlare | Fastly | Akamai]
-
-### Backend Optimization
-- **Response Caching:** [Redis | In-memory | CDN]
-- **Database Indexing:** [Configured | Monitored]
-- **Connection Pooling:** [Enabled]
-- **Rate Limiting:** [X requests per minute]
-- **Compression:** [gzip | Brotli]
-
----
-
-## Versioning Strategy
-
-### Application Versioning
-- **Schema:** [Semantic Versioning | Calendar Versioning]
-- **Format:** `MAJOR.MINOR.PATCH` or `YYYY.MM.DD`
-- **Git Tags:** `v1.2.3` or `release-2024.01.15`
-
-### API Versioning
-- **Strategy:** [URL Path | Header | Query Parameter]
-- **Format:** `/api/v1/` or `Accept: application/vnd.api+json;version=1`
-- **Deprecation Policy:** [6 months notice]
-
----
-
-## Licensing
-
-### Project License
-- **Type:** [MIT | Apache 2.0 | GPL | Proprietary]
-- **File:** LICENSE
-
-### Dependencies Compliance
-- **Allowed Licenses:** [MIT, Apache 2.0, BSD, ISC]
-- **Prohibited Licenses:** [GPL, AGPL]
-- **Tool:** [license-checker | FOSSA]
-
----
-
-## Quick Start Commands
-
-### Installation
-```bash
-# Clone repository
-git clone [repository-url]
-cd [project-name]
-
-# Install dependencies
-npm install  # or yarn, pnpm
-
-# Setup environment
-cp .env.example .env.local
-# Edit .env.local with your values
-
-# Database setup
-npm run db:migrate
-npm run db:seed
+### File Structure
+```
+whatsapp-google-uploader/
+├── credentials.json          # Google OAuth credentials (user provides)
+├── tokens.json              # OAuth tokens (auto-created)
+├── .env                     # Environment variables (optional)
+├── dist/                    # Compiled TypeScript output
+├── src/                     # TypeScript source code
+└── decrypted/              # WhatsApp database decryption output
 ```
 
-### Development
+## External Dependencies
+
+### Python (Optional - for WhatsApp Decryption)
+- **wa-crypt-tools**: Python library for .crypt15 decryption
+- **Installation**: `pip install wa-crypt-tools`
+- **Usage**: Called via Node.js child process for `npm run decrypt`
+
+### Google Cloud APIs
+| Service | Purpose | Version |
+|---------|---------|---------|
+| Google Photos Library API | Photo/video uploads | v1 |
+| Google Drive API | Document/audio uploads | v3 |
+| Google Sheets API | Progress database | v4 |
+| OAuth2 API | Authentication | v2 |
+
+## Testing Strategy
+
+### Current Testing Approach
+- **Framework:** Native Node.js (no external test framework)
+- **Location:** `tests/test.js`
+- **Types:** Integration tests with mock data
+- **Coverage:** All core functionality tested
+- **Commands:**
+  - `npm test` - Run tests with mock data
+  - `npm run test:live` - Run tests with real APIs (requires auth)
+
+## Performance Characteristics
+
+### Memory Usage
+- **Streaming Architecture:** Constant ~50MB memory usage regardless of file size
+- **No File Buffering:** Direct stream processing from filesystem to APIs
+- **Efficient Scanning:** SQLite3 database queries for chat metadata
+
+### Upload Performance
+- **Sequential Uploads:** One file at a time to avoid quota limits
+- **Adaptive Rate Limiting:** Exponential backoff for quota management
+- **Smart Deduplication:** SHA-256 content hashing prevents re-uploads
+
+### Cross-Platform Support
+- **Desktop:** Windows, macOS, Linux
+- **Mobile:** Android 11+ via Termux
+- **Path Handling:** Universal path resolution
+- **Permissions:** Platform-appropriate file access
+
+## Build & Deployment
+
+### Build Process
 ```bash
-# Start development server
-npm run dev
-
-# Run tests
-npm test
-
-# Lint and format
-npm run lint
-npm run format
-
-# Type check
-npm run type-check
+npm run build        # Compile TypeScript to JavaScript
+npm run dev         # Watch mode for development
+npm run clean       # Clean build artifacts
 ```
 
-### Production Build
+### CLI Commands (Production)
 ```bash
-# Build for production
+npm run auth        # Authenticate with Google
+npm run scan        # Scan WhatsApp media and save to Sheets
+npm run upload      # Upload media from specific chat
+npm run decrypt     # Decrypt WhatsApp database
+npm run check       # Verify configuration
+npm run setup       # Create .env template
+npm test           # Run test suite
+```
+
+## Quality Assurance
+
+### Code Quality
+- **TypeScript:** Strict type checking enabled
+- **No Linting Framework:** Following KISS principle - simple, readable code
+- **Manual Code Review:** All changes reviewed by architect
+- **Test Coverage:** All CLI commands and core functionality tested
+
+### Security Considerations
+- **OAuth2 Best Practices:** Following Google's recommended OAuth2 flow
+- **Minimal API Scopes:** Only required permissions requested
+- **Credential Security:** Local file storage with appropriate permissions
+- **No Network Storage:** All sensitive data stored locally or in user's Google account
+
+## Versioning & Updates
+
+### Current Version: 1.0.0
+- **Status:** Production-ready
+- **Versioning:** Semantic versioning (MAJOR.MINOR.PATCH)
+- **Update Strategy:** Manual updates via git pull + npm install
+
+### Upgrade Path
+- **Node.js:** Tested on 14.x, 16.x, 18.x, 20.x
+- **Dependencies:** Regular security updates applied
+- **Google APIs:** Using latest stable versions
+
+---
+
+## Quick Commands Reference
+
+### Setup & Authentication
+```bash
+# Initial setup
+npm install --production
 npm run build
+npm run auth
 
-# Start production server
-npm start
+# Verify setup
+npm run check
+```
 
-# Docker build
-docker build -t app:latest .
-docker run -p 3000:3000 app:latest
+### Daily Usage
+```bash
+# Scan WhatsApp media
+npm run scan
+
+# Upload specific chat
+npm run upload "Chat Name"
+
+# Decrypt WhatsApp database (if needed)
+npm run decrypt
 ```
 
 ---
 
-## Upgrade Path
+*Last Updated: 2025-09-15*
+*Production Version: 1.0.0*
+*Architecture Status: Production-Ready*
 
-### Planning Major Upgrades
-1. **Framework Updates:** [Quarterly review]
-2. **Security Patches:** [Immediate]
-3. **Breaking Changes:** [Major version only]
-4. **Testing Requirements:** [Full regression suite]
-
-### Deprecated Technologies
-| Technology | Deprecated | Remove By | Migration Path |
-|------------|------------|-----------|----------------|
-| [Old Tech] | 2024-01-01 | 2024-06-01 | [New Tech] |
-
----
-
-## Support & Resources
-
-### Documentation Links
-- **Official Docs:** [Links to main framework docs]
-- **API Reference:** [Internal API documentation]
-- **Architecture Diagrams:** [Link to diagrams]
-- **Runbooks:** [Link to operational guides]
-
-### Team Resources
-- **Wiki:** [Internal wiki URL]
-- **Slack Channel:** #tech-stack
-- **Tech Lead:** [Contact information]
-
----
-
-*Last Updated: [Date]*
-*Review Schedule: [Monthly | Quarterly]*
-*Next Review: [Date]*
-
-**Note:** Keep this document updated as the technology stack evolves. All changes should be reviewed by the technical lead or architect.
+**Note:** This tech stack follows KISS/YAGNI/DRY principles with minimal dependencies and maximum functionality.

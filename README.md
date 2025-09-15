@@ -7,6 +7,8 @@
 - **📱 Smart File Routing** - Photos/videos → Google Photos albums, Documents/audio → Google Drive folders
 - **🔒 SHA-256 Deduplication** - Prevents duplicate uploads using content hashing
 - **📊 Per-Chat Tracking** - Individual Google Sheets for each chat with full upload history
+- **👥 Google Contacts Integration** - Automatically uses real contact names instead of phone numbers
+- **🔓 WhatsApp Database Decryption** - Decrypt both msgstore.db and wa.db for complete metadata
 - **⚡ Zero-Copy Architecture** - Direct streaming without temporary files
 - **🛡️ Graceful Shutdown** - Saves state on Ctrl+C, resumes from exact point
 - **🎯 Adaptive Rate Limiting** - Smart quota management with exponential backoff
@@ -43,6 +45,7 @@ npm run build
    - Google Drive API
    - Google Photos Library API
    - Google Sheets API
+   - People API (for Google Contacts integration)
 4. Create credentials: "OAuth 2.0 Client ID"
 5. **IMPORTANT**: Choose **"Desktop app"** as application type
 6. Download JSON → Save as `credentials.json` in project root
@@ -54,7 +57,7 @@ npm run auth
 # Creates Google Sheets database automatically
 ```
 
-### 3. Decrypt WhatsApp Database (Optional)
+### 3. Decrypt WhatsApp Database (Recommended)
 ```bash
 # Install wa-crypt-tools
 pip install wa-crypt-tools
@@ -62,16 +65,27 @@ pip install wa-crypt-tools
 # Add backup key to .env
 echo "WHATSAPP_BACKUP_KEY=your-64-character-hex-key" >> .env
 
-# Decrypt database
+# Decrypt database (decrypts both msgstore.db and wa.db)
 npm run decrypt
 ```
 
+**Benefits of decryption:**
+- Extract complete chat metadata
+- Get accurate message counts
+- Access chat creation dates
+- Retrieve contact display names
+
 ### 4. Scan WhatsApp Media
 ```bash
-npm run scan                    # Auto-detect location
+npm run scan                    # Auto-detect location (uses Google Contacts for names)
 npm run scan -- /custom/path    # Custom WhatsApp path
 npm run scan -- --dry-run       # Preview without saving to Sheets
 ```
+
+**Note:** If you have Google Contacts enabled (People API), the scan will automatically:
+- Load your Google Contacts
+- Match phone numbers with contact names
+- Display real names instead of phone numbers in the chat list
 
 ### 5. Upload Media
 ```bash

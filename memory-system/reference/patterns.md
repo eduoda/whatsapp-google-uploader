@@ -1,1128 +1,407 @@
-# Code Patterns and Conventions
+# Code Patterns and Conventions - WhatsApp Google Uploader
 
 ## Overview
-This document defines the coding standards, design patterns, and conventions used throughout the project. All developers and AI agents should follow these patterns for consistency.
+This document defines the actual coding patterns and conventions used in the WhatsApp Google Uploader production codebase (v1.0.0). These patterns follow KISS/YAGNI/DRY principles and reflect the current unified architecture.
 
 ---
 
-## Naming Conventions
+## Core Architectural Patterns
 
-### General Rules
+### Unified API Class Pattern
+**Pattern**: Single GoogleApis class handling all Google service interactions
+```typescript
+// Pattern: Consolidated API management
+class GoogleApis {
+  private auth: GoogleAuth;
+  private drive: drive_v3.Drive;
+  private photos: any;
+  private sheets: sheets_v4.Sheets;
+
+  // All Google API operations in one class
+  async uploadToPhotos(filePath: string, albumId: string): Promise<string>
+  async uploadToDrive(filePath: string, folderId: string): Promise<string>
+  async updateSheets(spreadsheetId: string, values: any[][]): Promise<void>
+}
+```
+**Rationale**: Simplified from modular approach, 85% code reduction while maintaining functionality
+
+### Stream-Based File Processing
+**Pattern**: Direct streaming without temporary files
+```typescript
+// Pattern: Zero-copy streaming
+const fileStream = fs.createReadStream(filePath);
+const media = {
+  mimeType: mimeType,
+  body: fileStream
+};
+await drive.files.create({ requestBody: metadata, media });
+```
+**Rationale**: Constant ~50MB memory usage regardless of file size
+
+### Google Sheets as Database Pattern
+**Pattern**: Cloud-based persistence using Google Sheets API
+```typescript
+// Pattern: Sheets as database
+class SheetsDatabase {
+  async findRowByJID(jid: string): Promise<number | null>
+  async updateRow(row: number, values: any[]): Promise<void>
+  async appendRows(values: any[][]): Promise<void>
+}
+```
+**Rationale**: Zero-install, cross-platform, manually editable database
+
+---
+
+## Naming Conventions (Actual Usage)
+
+### Current Project Conventions
 | Element | Convention | Example |
 |---------|------------|---------|
-| Variables | camelCase | `userName`, `isActive` |
-| Constants | UPPER_SNAKE_CASE | `MAX_RETRIES`, `API_KEY` |
-| Functions | camelCase | `getUserById()`, `calculateTotal()` |
-| Classes | PascalCase | `UserService`, `DatabaseConnection` |
-| Interfaces | PascalCase with 'I' prefix | `IUserRepository`, `ILogger` |
-| Types | PascalCase with 'T' prefix | `TUserRole`, `TApiResponse` |
-| Enums | PascalCase | `UserStatus`, `ErrorCode` |
-| Files | kebab-case or camelCase | `user-service.ts`, `apiHelpers.js` |
-| Components | PascalCase | `UserProfile`, `NavigationBar` |
-| Database Tables | snake_case | `user_accounts`, `order_items` |
-| Database Columns | snake_case | `created_at`, `user_id` |
-| API Endpoints | kebab-case | `/api/user-profiles`, `/auth/reset-password` |
-| Environment Variables | UPPER_SNAKE_CASE | `DATABASE_URL`, `JWT_SECRET` |
+| Classes | PascalCase | `GoogleApis`, `WhatsAppScanner`, `UploaderManager` |
+| Methods | camelCase | `authenticateUser()`, `scanDirectory()`, `uploadFile()` |
+| Interfaces | PascalCase | `ChatFileInfo`, `ScanResult`, `UploadConfig` |
+| Files | kebab-case | `google-apis.ts`, `whatsapp-scanner.ts`, `cli-application.ts` |
+| Constants | UPPER_SNAKE_CASE | `WHATSAPP_BACKUP_KEY`, `MAX_RETRIES` |
+| Commands | kebab-case | `npm run scan`, `npm run upload` |
 
-### Language-Specific Conventions
-
-#### TypeScript/JavaScript
-```typescript
-// Interfaces
-interface IUserService {
-  getUser(id: string): Promise<User>;
-}
-
-// Types
-type TUserRole = 'admin' | 'user' | 'guest';
-
-// Enums
-enum Status {
-  Active = 'ACTIVE',
-  Inactive = 'INACTIVE'
-}
-
-// Classes
-class UserController {
-  private userService: IUserService;
-  
-  async handleGetUser(req: Request): Promise<Response> {
-    // Method implementation
-  }
-}
-```
-
-#### Python
-```python
-# Classes (PascalCase)
-class UserService:
-    # Methods (snake_case)
-    def get_user_by_id(self, user_id: str) -> User:
-        pass
-
-# Functions (snake_case)
-def calculate_discount(price: float, rate: float) -> float:
-    pass
-
-# Constants (UPPER_SNAKE_CASE)
-MAX_CONNECTIONS = 100
-DEFAULT_TIMEOUT = 30
-
-# Private methods/variables (leading underscore)
-def _internal_helper():
-    pass
-```
-
-#### Go
-```go
-// Exported (PascalCase)
-type UserService struct {
-    repository UserRepository
-}
-
-func (s *UserService) GetUser(id string) (*User, error) {
-    return s.repository.FindByID(id)
-}
-
-// Unexported (camelCase)
-func validateInput(input string) error {
-    // validation logic
-}
-
-// Constants (PascalCase or CAPS)
-const MaxRetries = 3
-const DEFAULT_TIMEOUT = 30
-```
-
----
-
-## File Organization
-
-### Standard Structure
-```typescript
-// 1. File header comment (if needed)
-/**
- * @fileoverview User service implementation
- * @module services/user
- */
-
-// 2. Imports (grouped and ordered)
-// External imports first
-import express from 'express';
-import { logger } from 'winston';
-
-// Internal/project imports
-import { DatabaseConnection } from '@/database';
-import { UserRepository } from '@/repositories';
-
-// Relative imports last
-import { validateUser } from './validators';
-import { UserDTO } from './types';
-
-// 3. Constants
-const MAX_LOGIN_ATTEMPTS = 5;
-const TOKEN_EXPIRY = '24h';
-
-// 4. Types/Interfaces
-interface IUserService {
-  // ...
-}
-
-// 5. Main class/function
-export class UserService implements IUserService {
-  // ...
-}
-
-// 6. Helper functions
-function hashPassword(password: string): string {
-  // ...
-}
-
-// 7. Exports (if not already exported)
-export { hashPassword };
-```
-
-### Directory Structure Patterns
-```
-src/
-├── controllers/        # Request handlers
-├── services/          # Business logic
-├── repositories/      # Data access layer
-├── models/           # Data models/entities
-├── utils/            # Utility functions
-├── middleware/       # Express/HTTP middleware
-├── config/           # Configuration files
-├── types/            # TypeScript type definitions
-├── validators/       # Input validation
-├── errors/           # Custom error classes
-└── tests/            # Test files
-```
-
----
-
-## Design Patterns
-
-### Repository Pattern
-```typescript
-// Abstract data access logic
-interface IRepository<T> {
-  findById(id: string): Promise<T | null>;
-  findAll(): Promise<T[]>;
-  create(entity: T): Promise<T>;
-  update(id: string, entity: Partial<T>): Promise<T>;
-  delete(id: string): Promise<boolean>;
-}
-
-class UserRepository implements IRepository<User> {
-  constructor(private db: DatabaseConnection) {}
-  
-  async findById(id: string): Promise<User | null> {
-    const result = await this.db.query('SELECT * FROM users WHERE id = ?', [id]);
-    return result ? this.mapToUser(result) : null;
-  }
-  
-  private mapToUser(data: any): User {
-    // Map database result to domain model
-    return new User(data);
-  }
-}
-```
-
-### Service Layer Pattern
-```typescript
-// Encapsulate business logic
-class UserService {
-  constructor(
-    private userRepo: IUserRepository,
-    private emailService: IEmailService,
-    private logger: ILogger
-  ) {}
-  
-  async registerUser(data: RegisterDTO): Promise<UserDTO> {
-    // Validate input
-    const validated = await this.validateRegistration(data);
-    
-    // Business logic
-    const hashedPassword = await hashPassword(validated.password);
-    const user = await this.userRepo.create({
-      ...validated,
-      password: hashedPassword
-    });
-    
-    // Side effects
-    await this.emailService.sendWelcomeEmail(user.email);
-    this.logger.info('User registered', { userId: user.id });
-    
-    // Return DTO
-    return this.toDTO(user);
-  }
-}
-```
-
-### Factory Pattern
-```typescript
-// Object creation abstraction
-abstract class NotificationFactory {
-  abstract createNotification(): INotification;
-  
-  send(message: string): void {
-    const notification = this.createNotification();
-    notification.send(message);
-  }
-}
-
-class EmailNotificationFactory extends NotificationFactory {
-  createNotification(): INotification {
-    return new EmailNotification();
-  }
-}
-
-class SMSNotificationFactory extends NotificationFactory {
-  createNotification(): INotification {
-    return new SMSNotification();
-  }
-}
-
-// Usage
-const factory = new EmailNotificationFactory();
-factory.send('Hello World');
-```
-
-### Singleton Pattern
-```typescript
-// Single instance throughout application
-class Database {
-  private static instance: Database;
-  private connection: Connection;
-  
-  private constructor() {
-    this.connection = this.createConnection();
-  }
-  
-  static getInstance(): Database {
-    if (!Database.instance) {
-      Database.instance = new Database();
-    }
-    return Database.instance;
-  }
-  
-  query(sql: string, params?: any[]): Promise<any> {
-    return this.connection.execute(sql, params);
-  }
-}
-```
-
-### Observer Pattern
-```typescript
-// Event-driven communication
-class EventEmitter {
-  private events: Map<string, Function[]> = new Map();
-  
-  on(event: string, handler: Function): void {
-    if (!this.events.has(event)) {
-      this.events.set(event, []);
-    }
-    this.events.get(event)!.push(handler);
-  }
-  
-  emit(event: string, data?: any): void {
-    const handlers = this.events.get(event);
-    if (handlers) {
-      handlers.forEach(handler => handler(data));
-    }
-  }
-}
-```
-
-### Strategy Pattern
-```typescript
-// Interchangeable algorithms
-interface IPricingStrategy {
-  calculatePrice(basePrice: number): number;
-}
-
-class RegularPricing implements IPricingStrategy {
-  calculatePrice(basePrice: number): number {
-    return basePrice;
-  }
-}
-
-class PremiumPricing implements IPricingStrategy {
-  calculatePrice(basePrice: number): number {
-    return basePrice * 0.8; // 20% discount
-  }
-}
-
-class PricingContext {
-  constructor(private strategy: IPricingStrategy) {}
-  
-  setStrategy(strategy: IPricingStrategy): void {
-    this.strategy = strategy;
-  }
-  
-  calculateFinalPrice(basePrice: number): number {
-    return this.strategy.calculatePrice(basePrice);
-  }
-}
-```
+### Google API Naming
+| Element | Convention | Example |
+|---------|------------|---------|
+| Album Names | `WA_[chat_name]_[JID]` | `WA_Family Group_1234567890@g.us` |
+| Folder Names | `[chat_name]_[JID]` | `Family Group_1234567890@g.us` |
+| Sheet Names | Same as folder | `/WhatsApp Google Uploader/Family Group_1234567890@g.us` |
 
 ---
 
 ## Error Handling Patterns
 
-### Custom Error Classes
+### Graceful Degradation
 ```typescript
-// Base error class
-class AppError extends Error {
-  constructor(
-    public message: string,
-    public statusCode: number,
-    public code: string,
-    public isOperational = true
-  ) {
-    super(message);
-    Object.setPrototypeOf(this, AppError.prototype);
-  }
+// Pattern: Graceful error handling with user feedback
+try {
+  await this.uploadFile(file);
+  console.log(`✅ Uploaded: ${file.name}`);
+} catch (error) {
+  console.error(`❌ Failed: ${file.name} - ${error.message}`);
+  await this.updateSheetWithError(file, error.message);
 }
+```
 
-// Specific error types
-class ValidationError extends AppError {
-  constructor(message: string, details?: any) {
-    super(message, 400, 'VALIDATION_ERROR');
-    this.details = details;
-  }
-}
-
-class NotFoundError extends AppError {
-  constructor(resource: string) {
-    super(`${resource} not found`, 404, 'NOT_FOUND');
+### Quota Management
+```typescript
+// Pattern: Exponential backoff for API limits
+private async handleQuotaError(error: any, attempt: number): Promise<void> {
+  if (error.code === 429) {
+    const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+    console.log(`⏳ Rate limited. Waiting ${delay/1000}s...`);
+    await this.sleep(delay);
   }
 }
 ```
 
-### Try-Catch Pattern
+### Graceful Shutdown
 ```typescript
-// Consistent error handling
-async function handleRequest(req: Request): Promise<Response> {
-  try {
-    // Validate input
-    const validated = validate(req.body);
-    
-    // Process request
-    const result = await service.process(validated);
-    
-    // Return success response
-    return {
-      success: true,
-      data: result
-    };
-  } catch (error) {
-    // Log error
-    logger.error('Request failed', { error, req });
-    
-    // Handle known errors
-    if (error instanceof ValidationError) {
-      return {
-        success: false,
-        error: {
-          code: error.code,
-          message: error.message,
-          details: error.details
-        }
-      };
-    }
-    
-    // Handle unknown errors
-    return {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'An unexpected error occurred'
-      }
-    };
-  }
+// Pattern: Ctrl+C handling with state preservation
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await this.saveCurrentState();
+  process.exit(0);
+});
+```
+
+---
+
+## Data Patterns
+
+### JID-Based Lookups
+```typescript
+// Pattern: Use WhatsApp JID as primary key
+interface ChatFileInfo {
+  jid: string;           // Primary key: WhatsApp JID
+  chatName: string;      // Display name (user can edit)
+  filePath: string;      // File system path
+  fileHash: string;      // SHA-256 for deduplication
+  uploadStatus: string;  // 'pending' | 'uploaded' | 'failed'
 }
 ```
 
-### Error Middleware Pattern
+### SHA-256 Deduplication
 ```typescript
-// Express error middleware
-function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
-  if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
-      error: {
-        code: err.code,
-        message: err.message
-      }
-    });
-  }
-  
-  // Log unexpected errors
-  logger.error('Unexpected error', { err, req });
-  
-  return res.status(500).json({
-    error: {
-      code: 'INTERNAL_ERROR',
-      message: 'An unexpected error occurred'
-    }
-  });
+// Pattern: Content-based duplicate detection
+const fileHash = crypto.createHash('sha256')
+  .update(await fs.readFile(filePath))
+  .digest('hex');
+
+const isDuplicate = await this.findFileByHash(fileHash);
+if (isDuplicate) {
+  console.log(`⏭️  Skipping duplicate: ${fileName}`);
+  return;
+}
+```
+
+### Manual Edit Preservation
+```typescript
+// Pattern: Preserve user edits in Google Sheets
+// ✅ JID-based lookups allow row reordering
+// ✅ Chat names can be manually edited
+// ✅ Manual status changes are preserved
+const row = await this.findRowByJID(file.jid);
+if (row) {
+  // Update existing row, preserve manual edits
+  await this.updateRow(row, newValues);
 }
 ```
 
 ---
 
-## API Patterns
+## CLI Patterns
 
-### RESTful Conventions
-```
-GET    /api/v1/users           # List all users
-GET    /api/v1/users/:id       # Get specific user
-POST   /api/v1/users           # Create new user
-PUT    /api/v1/users/:id       # Update entire user
-PATCH  /api/v1/users/:id       # Update partial user
-DELETE /api/v1/users/:id       # Delete user
-
-# Nested resources
-GET    /api/v1/users/:id/posts # Get user's posts
-POST   /api/v1/users/:id/posts # Create post for user
-
-# Actions
-POST   /api/v1/users/:id/activate   # Activate user
-POST   /api/v1/users/:id/reset-password # Reset password
+### Command Structure
+```bash
+# Pattern: npm run [action] [options]
+npm run auth                           # Authentication
+npm run scan [path] [--dry-run]        # Media scanning
+npm run upload "Chat Name" [options]   # Upload specific chat
+npm run decrypt [path] [--key hex]     # Database decryption
 ```
 
-### Request/Response Format
+### Progress Indication
 ```typescript
-// Request with validation
-interface CreateUserRequest {
-  body: {
-    email: string;
-    password: string;
-    name: string;
-  };
-  headers: {
-    'content-type': 'application/json';
-  };
-}
-
-// Success response
-interface SuccessResponse<T> {
-  success: true;
-  data: T;
-  meta?: {
-    timestamp: string;
-    version: string;
-  };
-}
-
-// Error response
-interface ErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: any;
-    timestamp: string;
-  };
-}
-
-// Paginated response
-interface PaginatedResponse<T> {
-  success: true;
-  data: T[];
-  pagination: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-}
+// Pattern: Simple console feedback
+console.log(`📊 Found ${files.length} media files`);
+console.log(`📤 Uploading ${fileName}...`);
+console.log(`✅ Upload complete: ${googleUrl}`);
+console.log(`❌ Upload failed: ${error.message}`);
 ```
 
 ---
 
-## Database Patterns
+## TypeScript Patterns
 
-### Query Builder Pattern
+### Interface Design
 ```typescript
-// Fluent interface for building queries
-class QueryBuilder {
-  private query: string = '';
-  private params: any[] = [];
-  
-  select(fields: string[]): this {
-    this.query = `SELECT ${fields.join(', ')}`;
-    return this;
-  }
-  
-  from(table: string): this {
-    this.query += ` FROM ${table}`;
-    return this;
-  }
-  
-  where(condition: string, value?: any): this {
-    this.query += ` WHERE ${condition}`;
-    if (value !== undefined) {
-      this.params.push(value);
-    }
-    return this;
-  }
-  
-  build(): { query: string; params: any[] } {
-    return { query: this.query, params: this.params };
-  }
+// Pattern: Simple, focused interfaces
+interface ScanResult {
+  totalFiles: number;
+  filesByType: Record<string, number>;
+  chats: ChatInfo[];
+}
+
+interface ChatInfo {
+  jid: string;
+  name: string;
+  fileCount: number;
+  lastActivity: Date;
 }
 ```
 
-### Migration Pattern
-```sql
--- migrations/20250115120000_create_users_table.sql
-
--- Up Migration
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_users_email ON users(email);
-
--- Down Migration
-DROP TABLE IF EXISTS users;
+### Async/Await Usage
+```typescript
+// Pattern: Consistent async/await, no mixing with Promises
+async scanDirectory(path: string): Promise<ScanResult> {
+  const files = await fs.readdir(path);
+  const results = await Promise.all(
+    files.map(file => this.processFile(file))
+  );
+  return this.consolidateResults(results);
+}
 ```
 
-### Transaction Pattern
+### Error Types
 ```typescript
-// Ensure data consistency
-async function transferFunds(fromId: string, toId: string, amount: number): Promise<void> {
-  const connection = await db.getConnection();
-  
-  try {
-    await connection.beginTransaction();
-    
-    // Deduct from sender
-    await connection.query(
-      'UPDATE accounts SET balance = balance - ? WHERE id = ?',
-      [amount, fromId]
-    );
-    
-    // Add to receiver
-    await connection.query(
-      'UPDATE accounts SET balance = balance + ? WHERE id = ?',
-      [amount, toId]
-    );
-    
-    // Log transaction
-    await connection.query(
-      'INSERT INTO transactions (from_id, to_id, amount) VALUES (?, ?, ?)',
-      [fromId, toId, amount]
-    );
-    
-    await connection.commit();
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
-  }
-}
+// Pattern: Simple error handling, no custom error classes
+throw new Error(`Invalid WhatsApp path: ${path}`);
+throw new Error(`Authentication failed: ${response.statusText}`);
+throw new Error(`Quota exceeded. Try again later.`);
 ```
 
 ---
 
 ## Testing Patterns
 
-### Test Structure (AAA Pattern)
-```typescript
-describe('UserService', () => {
-  let userService: UserService;
-  let mockRepository: jest.Mocked<IUserRepository>;
-  
-  beforeEach(() => {
-    // Arrange - Setup
-    mockRepository = createMockRepository();
-    userService = new UserService(mockRepository);
-  });
-  
-  describe('getUser', () => {
-    it('should return user when found', async () => {
-      // Arrange
-      const userId = '123';
-      const expectedUser = { id: userId, name: 'John' };
-      mockRepository.findById.mockResolvedValue(expectedUser);
-      
-      // Act
-      const result = await userService.getUser(userId);
-      
-      // Assert
-      expect(result).toEqual(expectedUser);
-      expect(mockRepository.findById).toHaveBeenCalledWith(userId);
-    });
-    
-    it('should throw NotFoundError when user not found', async () => {
-      // Arrange
-      mockRepository.findById.mockResolvedValue(null);
-      
-      // Act & Assert
-      await expect(userService.getUser('999'))
-        .rejects
-        .toThrow(NotFoundError);
-    });
-  });
-});
+### Integration Testing
+```javascript
+// Pattern: Real integration tests with mock data
+async function testScanCommand() {
+  console.log('Testing scan command...');
+  const result = await scanner.scanDirectory('./test-data');
+  assert(result.totalFiles > 0, 'Should find test files');
+}
 ```
 
-### Mock Patterns
+### Dry-Run Pattern
 ```typescript
-// Mock factory
-function createMockRepository(): jest.Mocked<IUserRepository> {
-  return {
-    findById: jest.fn(),
-    findAll: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn()
-  };
-}
-
-// Mock with behavior
-const mockEmailService = {
-  sendEmail: jest.fn().mockImplementation((to, subject) => {
-    if (!to.includes('@')) {
-      throw new Error('Invalid email');
+// Pattern: Dry-run mode for all destructive operations
+async uploadFiles(files: FileInfo[], dryRun = false): Promise<void> {
+  for (const file of files) {
+    if (dryRun) {
+      console.log(`[DRY RUN] Would upload: ${file.name}`);
+    } else {
+      await this.actualUpload(file);
     }
-    return Promise.resolve({ messageId: '123' });
-  })
-};
-```
-
-### Test Data Builders
-```typescript
-// Builder pattern for test data
-class UserBuilder {
-  private user: Partial<User> = {
-    id: '123',
-    email: 'test@example.com',
-    name: 'Test User'
-  };
-  
-  withId(id: string): this {
-    this.user.id = id;
-    return this;
-  }
-  
-  withEmail(email: string): this {
-    this.user.email = email;
-    return this;
-  }
-  
-  build(): User {
-    return this.user as User;
   }
 }
-
-// Usage
-const user = new UserBuilder()
-  .withEmail('custom@example.com')
-  .build();
 ```
 
 ---
 
-## Security Patterns
+## Configuration Patterns
 
-### Input Validation
-```typescript
-// Validation schema using Joi/Yup/Zod
-const userSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/),
-  age: z.number().min(18).max(120)
-});
-
-function validateUser(input: unknown): ValidatedUser {
-  try {
-    return userSchema.parse(input);
-  } catch (error) {
-    throw new ValidationError('Invalid user data', error.errors);
-  }
-}
+### Environment Variables
+```bash
+# Pattern: Optional environment configuration
+WHATSAPP_BACKUP_KEY=64-character-hex-key  # Optional for decryption
+GOOGLE_CLIENT_ID=auto-from-credentials    # Auto-extracted
+GOOGLE_CLIENT_SECRET=auto-from-credentials # Auto-extracted
 ```
 
-### Authentication Middleware
+### File-Based Configuration
 ```typescript
-// JWT authentication
-async function authenticate(req: Request, res: Response, next: NextFunction) {
-  try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!token) {
-      throw new UnauthorizedError('No token provided');
-    }
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    req.user = await userService.findById(decoded.userId);
-    
-    if (!req.user) {
-      throw new UnauthorizedError('User not found');
-    }
-    
-    next();
-  } catch (error) {
-    next(error);
-  }
-}
-```
-
-### Authorization Pattern
-```typescript
-// Role-based access control
-function authorize(...roles: string[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return next(new UnauthorizedError('Not authenticated'));
-    }
-    
-    if (!roles.includes(req.user.role)) {
-      return next(new ForbiddenError('Insufficient permissions'));
-    }
-    
-    next();
-  };
-}
-
-// Usage
-router.delete('/users/:id', authenticate, authorize('admin'), deleteUser);
+// Pattern: JSON configuration with fallbacks
+const config = {
+  whatsappPath: process.env.WHATSAPP_PATH || './WhatsApp',
+  maxRetries: 3,
+  batchSize: 50,
+  rateLimit: true
+};
 ```
 
 ---
 
 ## Performance Patterns
 
-### Caching Strategy
+### Streaming Architecture
 ```typescript
-// Multi-level caching
-class CacheService {
-  private memoryCache = new Map();
-  private redisClient: RedisClient;
-  
-  async get<T>(key: string): Promise<T | null> {
-    // L1: Memory cache
-    if (this.memoryCache.has(key)) {
-      return this.memoryCache.get(key);
-    }
-    
-    // L2: Redis cache
-    const redisValue = await this.redisClient.get(key);
-    if (redisValue) {
-      const parsed = JSON.parse(redisValue);
-      this.memoryCache.set(key, parsed);
-      return parsed;
-    }
-    
-    return null;
-  }
-  
-  async set<T>(key: string, value: T, ttl: number = 3600): Promise<void> {
-    // Set in both caches
-    this.memoryCache.set(key, value);
-    await this.redisClient.setex(key, ttl, JSON.stringify(value));
-    
-    // Clean memory cache after TTL
-    setTimeout(() => this.memoryCache.delete(key), ttl * 1000);
-  }
-}
+// Pattern: Stream processing for large files
+const stream = fs.createReadStream(filePath);
+const uploadStream = googleApi.files.create({
+  media: { body: stream },
+  // No file buffering - direct stream
+});
 ```
 
-### Batch Processing
+### Batch Operations
 ```typescript
-// Process items in batches
-async function processBatch<T, R>(
-  items: T[],
-  processor: (batch: T[]) => Promise<R[]>,
-  batchSize: number = 100
-): Promise<R[]> {
-  const results: R[] = [];
-  
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
-    const batchResults = await processor(batch);
-    results.push(...batchResults);
-  }
-  
-  return results;
-}
+// Pattern: Batch Google Sheets updates
+const batchData = files.map(file => [
+  file.jid, file.name, file.size, file.uploadStatus
+]);
+await sheets.spreadsheets.values.batchUpdate({
+  resource: { data: batchData }
+});
 ```
 
-### Connection Pooling
+### Memory Management
 ```typescript
-// Database connection pool
-class ConnectionPool {
-  private pool: Connection[] = [];
-  private available: Connection[] = [];
-  private maxSize: number = 10;
-  
-  async getConnection(): Promise<Connection> {
-    if (this.available.length > 0) {
-      return this.available.pop()!;
-    }
-    
-    if (this.pool.length < this.maxSize) {
-      const conn = await this.createConnection();
-      this.pool.push(conn);
-      return conn;
-    }
-    
-    // Wait for available connection
-    return new Promise((resolve) => {
-      const checkAvailable = setInterval(() => {
-        if (this.available.length > 0) {
-          clearInterval(checkAvailable);
-          resolve(this.available.pop()!);
-        }
-      }, 100);
-    });
-  }
-  
-  releaseConnection(conn: Connection): void {
-    this.available.push(conn);
+// Pattern: Explicit cleanup for large operations
+async processLargeDirectory(path: string): Promise<void> {
+  const files = await fs.readdir(path);
+
+  // Process in chunks to manage memory
+  for (let i = 0; i < files.length; i += CHUNK_SIZE) {
+    const chunk = files.slice(i, i + CHUNK_SIZE);
+    await this.processChunk(chunk);
+
+    // Allow garbage collection
+    if (global.gc) global.gc();
   }
 }
 ```
 
 ---
 
-## Frontend Patterns
+## Security Patterns
 
-### Component Structure
+### OAuth2 Token Management
 ```typescript
-// React/Angular/Vue component patterns
+// Pattern: Secure token storage with minimal scope
+const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUrl);
+oAuth2Client.setCredentials(tokens);
 
-// Container Component (Smart)
-const UserListContainer: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  useEffect(() => {
-    fetchUsers().then(setUsers).finally(() => setLoading(false));
-  }, []);
-  
-  if (loading) return <LoadingSpinner />;
-  
-  return <UserList users={users} onUserClick={handleUserClick} />;
+// Minimal scopes - only what's needed
+const SCOPES = [
+  'https://www.googleapis.com/auth/photoslibrary.appendonly',
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/spreadsheets'
+];
+```
+
+### Credential Handling
+```typescript
+// Pattern: Local file storage, no network transmission
+const credentialsPath = './credentials.json';
+const tokensPath = './tokens.json';
+
+// Never log or transmit credentials
+const credentials = JSON.parse(await fs.readFile(credentialsPath));
+```
+
+---
+
+## Anti-Patterns (Avoid)
+
+### ❌ Over-Engineering
+```typescript
+// BAD: Complex inheritance hierarchies
+class AbstractUploader extends BaseService implements IUploadStrategy
+class GooglePhotosUploader extends AbstractUploader
+class GoogleDriveUploader extends AbstractUploader
+
+// GOOD: Simple unified class
+class GoogleApis {
+  uploadToPhotos() { /* direct implementation */ }
+  uploadToDrive() { /* direct implementation */ }
+}
+```
+
+### ❌ Configuration Complexity
+```typescript
+// BAD: Complex configuration objects
+const config = new ConfigManager()
+  .withEnvironment(env)
+  .withDefaults(defaults)
+  .withValidation(schema)
+  .build();
+
+// GOOD: Simple object with fallbacks
+const config = {
+  uploadPath: process.env.UPLOAD_PATH || './uploads',
+  maxRetries: Number(process.env.MAX_RETRIES) || 3
 };
-
-// Presentational Component (Dumb)
-interface UserListProps {
-  users: User[];
-  onUserClick: (user: User) => void;
-}
-
-const UserList: React.FC<UserListProps> = ({ users, onUserClick }) => (
-  <ul>
-    {users.map(user => (
-      <li key={user.id} onClick={() => onUserClick(user)}>
-        {user.name}
-      </li>
-    ))}
-  </ul>
-);
 ```
 
-### State Management Pattern
+### ❌ Premature Abstraction
 ```typescript
-// Redux/MobX/Zustand pattern
-interface AppState {
-  user: User | null;
-  isAuthenticated: boolean;
-  theme: 'light' | 'dark';
+// BAD: Generic interfaces for single use case
+interface IFileProcessor<T> {
+  process(input: T): Promise<ProcessResult<T>>;
 }
 
-interface AppActions {
-  login: (credentials: Credentials) => Promise<void>;
-  logout: () => void;
-  toggleTheme: () => void;
-}
-
-const useAppStore = create<AppState & AppActions>((set) => ({
-  user: null,
-  isAuthenticated: false,
-  theme: 'light',
-  
-  login: async (credentials) => {
-    const user = await authService.login(credentials);
-    set({ user, isAuthenticated: true });
-  },
-  
-  logout: () => {
-    set({ user: null, isAuthenticated: false });
-  },
-  
-  toggleTheme: () => {
-    set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' }));
-  }
-}));
-```
-
-### Custom Hook Pattern
-```typescript
-// Reusable logic in hooks
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  
-  return debouncedValue;
-}
-
-function useFetch<T>(url: string) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  
-  useEffect(() => {
-    const abortController = new AbortController();
-    
-    fetch(url, { signal: abortController.signal })
-      .then(res => res.json())
-      .then(setData)
-      .catch(setError)
-      .finally(() => setLoading(false));
-    
-    return () => abortController.abort();
-  }, [url]);
-  
-  return { data, loading, error };
+// GOOD: Specific implementation
+class WhatsAppScanner {
+  scanDirectory(path: string): Promise<ScanResult> { /* ... */ }
 }
 ```
 
 ---
 
-## Documentation Patterns
+## Best Practices Summary
 
-### Code Comments
-```typescript
-/**
- * Calculates the compound interest for a given investment
- * 
- * @param principal - Initial investment amount in dollars
- * @param rate - Annual interest rate as a decimal (e.g., 0.05 for 5%)
- * @param time - Investment period in years
- * @param n - Number of times interest is compounded per year
- * @returns Final amount after compound interest
- * 
- * @example
- * // Calculate interest for $1000 at 5% for 10 years, compounded monthly
- * const amount = calculateCompoundInterest(1000, 0.05, 10, 12);
- * console.log(amount); // 1647.01
- * 
- * @throws {ValidationError} If any parameter is negative
- */
-function calculateCompoundInterest(
-  principal: number,
-  rate: number,
-  time: number,
-  n: number
-): number {
-  if (principal < 0 || rate < 0 || time < 0 || n <= 0) {
-    throw new ValidationError('All parameters must be non-negative');
-  }
-  
-  return principal * Math.pow(1 + rate / n, n * time);
-}
-```
-
-### AIDEV Comments
-```typescript
-// AIDEV-NOTE: Performance critical path - optimized for speed over memory
-// Uses memoization to cache results for repeated calculations
-
-// AIDEV-TODO: Implement rate limiting to prevent API abuse
-// Consider using sliding window algorithm for better accuracy
-
-// AIDEV-QUESTION: Should we handle timezone conversion here or in the client?
-// Current implementation assumes UTC
-```
-
-### README Pattern
-```markdown
-# Project Name
-
-## Overview
-Brief description of what the project does
-
-## Installation
-\`\`\`bash
-npm install
-\`\`\`
-
-## Usage
-\`\`\`typescript
-import { Feature } from 'package';
-
-const result = Feature.process(data);
-\`\`\`
-
-## API Reference
-Document all public APIs
-
-## Contributing
-Guidelines for contributors
-
-## License
-License information
-```
+1. **KISS Principle**: Simple solutions over complex architectures
+2. **YAGNI Principle**: Implement only what's needed now
+3. **DRY Principle**: Eliminate code duplication but don't over-abstract
+4. **Single Responsibility**: Each class/function has one clear purpose
+5. **Graceful Failure**: Always handle errors with user feedback
+6. **Stream Processing**: Use streams for large files
+7. **Content-Based Identity**: Use SHA-256 hashes for file identity
+8. **Manual Edit Support**: Design for human interaction
+9. **Cross-Platform**: Test on multiple platforms
+10. **Production Focus**: Prioritize working code over perfect code
 
 ---
 
-## Git Patterns
+*Last Updated: 2025-09-15*
+*Version: 1.0.0 Production*
+*Architecture: Post-Refactoring Unified Approach*
 
-### Commit Message Format
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-
-Types:
-- feat: New feature
-- fix: Bug fix
-- docs: Documentation only
-- style: Code style (formatting, semicolons, etc)
-- refactor: Code restructuring without behavior change
-- perf: Performance improvement
-- test: Adding or updating tests
-- chore: Maintenance tasks
-
-Examples:
-feat(auth): add password reset functionality
-fix(api): handle null response from external service
-docs(readme): update installation instructions
-```
-
-### Branch Naming
-```
-feature/TASK-123-user-authentication
-bugfix/TASK-456-fix-memory-leak
-hotfix/TASK-789-critical-security-patch
-release/v1.2.0
-```
-
----
-
-## AIDEV Specific Patterns
-
-### Task Documentation
-```markdown
-# TASK-001-dwarf-planning.md
-
-## Task Overview
-- **ID**: TASK-001
-- **Agent**: Dwarf
-- **Priority**: High
-- **Estimated**: 4 hours
-
-## Objectives
-1. Implement user authentication
-2. Add password reset functionality
-
-## Technical Approach
-- Use JWT for token management
-- Implement refresh token rotation
-- Store sessions in Redis
-
-## Success Criteria
-- [ ] All tests passing
-- [ ] Security review completed
-- [ ] Documentation updated
-```
-
-### Agent Collaboration Pattern
-```typescript
-// AIDEV-NOTE: Interface designed for agent collaboration
-// Architect defines contract, Dwarf implements, Seer tests
-
-interface IUserService {
-  // AIDEV-NOTE: Architect - Define clear contract
-  getUser(id: string): Promise<User>;
-  
-  // AIDEV-TODO: Elf - Add UI caching strategy
-  updateUser(id: string, data: Partial<User>): Promise<User>;
-  
-  // AIDEV-QUESTION: Security - Should we audit all deletions?
-  deleteUser(id: string): Promise<void>;
-}
-```
-
----
-
-*Last Updated: [Date]*
-*These patterns should be consistently followed by all team members and AI agents*
+**Note:** These patterns reflect the actual production codebase after 85% code reduction and architectural simplification.

@@ -3,19 +3,19 @@
 ## Current Project
 **Name:** WhatsApp Google Uploader
 **Type:** Node.js CLI Application with Library System
-**Status:** MVP Implementation Phase (Post-Refactoring)
-**Last Updated:** 2025-09-13
+**Status:** Production-Ready (Post-Major Refactoring)
+**Last Updated:** 2025-09-15
 
-## Project Goals
-1. Create a production-ready WhatsApp media uploader to Google Photos/Drive
-2. Zero-copy architecture with direct file streaming
-3. Enterprise-grade reliability with recovery and deduplication
-4. Cross-platform support (Termux Android, Desktop)
+## Project Goals ✅ ACHIEVED
+1. ✅ Create a production-ready WhatsApp media uploader to Google Photos/Drive
+2. ✅ Zero-copy architecture with direct file streaming
+3. ✅ Enterprise-grade reliability with recovery and deduplication
+4. ✅ Cross-platform support (Termux Android, Desktop)
 
 ## Current Sprint/Phase
-**Sprint:** MVP CLI Implementation (Post-Refactoring)
-**Focus:** Complete minimal viable product with `scan` and `upload` CLI commands
-**Deadline:** Deliver working WhatsApp backup solution
+**Sprint:** PRODUCTION MAINTENANCE
+**Focus:** No active development - system is production-ready and complete
+**Status:** All core functionality implemented and working in production
 
 ## Tech Stack Summary
 - **Runtime:** Node.js 14+ with ES6+ features
@@ -25,16 +25,24 @@
 - **Streaming:** Node.js native streams for memory-efficient uploads
 - **Cross-platform:** Path handling for Windows, macOS, Linux, Android/Termux
 
-## Key Features
-- Smart File Routing (Photos→Google Photos, Docs→Drive) - Status: ✅ IMPLEMENTED
-- Auto-Resume System with progress persistence - Status: ✅ IMPLEMENTED (Google Sheets)
-- SHA-256 Deduplication with Google Sheets database - Status: ✅ IMPLEMENTED
-- Zero-Copy Direct Upload Architecture - Status: ✅ IMPLEMENTED
-- CLI Commands: auth, setup, check - Status: ✅ IMPLEMENTED
+## Key Features ✅ ALL IMPLEMENTED
+- ✅ Smart File Routing (Photos→Google Photos, Docs→Drive)
+- ✅ Auto-Resume System with progress persistence (Google Sheets)
+- ✅ SHA-256 Deduplication with content-based detection
+- ✅ Zero-Copy Direct Upload Architecture
+- ✅ Complete CLI Interface: auth, setup, check, scan, upload, decrypt
+- ✅ Per-Chat Google Sheets Integration with JID-based lookups
+- ✅ Manual Chat Name Editing (preserved across scans)
+- ✅ Graceful Shutdown with state persistence
+- ✅ Adaptive Quota Management with exponential backoff
+- ✅ WhatsApp Database Decryption (.crypt15 → .db)
 
-## Active Development Areas
-1. **CLI Commands** - Only `scan` and `upload` commands missing for MVP
-2. **Testing** - Add CLI command tests to existing test suite
+## System Status - Production Ready
+1. **Core Functionality** - ✅ Complete and working
+2. **User Interface** - ✅ Comprehensive CLI with all essential commands
+3. **Data Integrity** - ✅ SHA-256 deduplication and JID-based lookups
+4. **Error Handling** - ✅ Graceful shutdown, quota management, retry logic
+5. **Documentation** - ✅ Clean README following KISS/YAGNI/DRY principles
 
 ## Important Conventions
 - **Branch naming:** TASK-XXX-[agent]
@@ -42,12 +50,16 @@
 - **Testing:** [Testing approach]
 - **Code style:** [Style guide/linter]
 
-## Recent Major Changes
-- 2025-09-13 - **MAJOR REFACTORING** - Applied KISS/YAGNI/DRY principles, reduced from ~11K to ~1.9K lines
-- 2025-09-13 - **Unified GoogleApis Class** - Consolidated separate Auth/Drive/Photos into single class
-- 2025-09-13 - **Working Upload System** - Real uploads to Google Drive/Photos implemented and tested
-- 2025-09-13 - **Google Sheets Persistence** - Cloud-based progress tracking and deduplication
-- 2025-09-13 - **CLI Commands Working** - auth, setup, check commands fully functional
+## Recent Major Changes (Sept 2025)
+- 2025-09-15 - **README Cleanup** - Normalized commands, added manual editing docs
+- 2025-09-15 - **JID-Based Lookups** - Google Sheets rows can be safely reordered
+- 2025-09-15 - **Manual Chat Name Editing** - User edits preserved across scans
+- 2025-09-15 - **Quota Management** - Adaptive rate limiting with exponential backoff
+- 2025-09-14 - **SHA-256 Deduplication** - Content-based duplicate detection
+- 2025-09-14 - **Per-Chat Features** - Individual sheets and targeted uploads
+- 2025-09-14 - **WhatsApp Decryption** - .crypt15 database decryption support
+- 2025-09-13 - **MAJOR REFACTORING** - Applied KISS/YAGNI/DRY, ~85% code reduction
+- 2025-09-13 - **Production Upload System** - Real Google APIs integration working
 
 ## Team/Agent Assignments
 - **Architect:** Overall architecture, task assignment

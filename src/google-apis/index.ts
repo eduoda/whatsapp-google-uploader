@@ -88,7 +88,8 @@ export class GoogleApis {
     const scopes = this.config.scopes || [
       'https://www.googleapis.com/auth/drive.file',
       'https://www.googleapis.com/auth/photoslibrary.appendonly',
-      'https://www.googleapis.com/auth/spreadsheets'
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/contacts.readonly'
     ];
 
     return this.auth.generateAuthUrl({
@@ -301,7 +302,9 @@ export class GoogleApis {
 
     // If chat metadata is provided, organize into chat-specific album
     if (metadata?.chatName && metadata?.chatJid) {
-      const albumName = `WA_${metadata.chatName}_${metadata.chatJid}`;
+      // Extract just the phone/group ID without @domain part
+      const chatId = metadata.chatJid.split('@')[0];
+      const albumName = `WA_${metadata.chatName}_${chatId}`;
 
       try {
         // AIDEV-NOTE: Pass existing album ID from metadata if available (from sheets database)
@@ -333,7 +336,9 @@ export class GoogleApis {
 
     // If chat metadata is provided, organize into chat-specific folder
     if (metadata?.chatName && metadata?.chatJid) {
-      const folderName = `${metadata.chatName}_${metadata.chatJid}`;
+      // Extract just the phone/group ID without @domain part
+      const chatId = metadata.chatJid.split('@')[0];
+      const folderName = `${metadata.chatName}_${chatId}`;
 
       // AIDEV-NOTE: Use existing folder ID from database if available
       if (metadata.existingFolderId) {
@@ -364,7 +369,8 @@ export class GoogleApis {
 
     // Add folder information to result
     if (parentFolderId && metadata?.chatName && metadata?.chatJid) {
-      uploadResult.folderName = `${metadata.chatName}_${metadata.chatJid}`;
+      const chatId = metadata.chatJid.split('@')[0];
+      uploadResult.folderName = `${metadata.chatName}_${chatId}`;
       uploadResult.folderId = parentFolderId;
       uploadResult.folderUrl = `https://drive.google.com/drive/folders/${parentFolderId}`;
     }

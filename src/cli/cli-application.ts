@@ -389,22 +389,25 @@ export class CLIApplication {
           // AIDEV-NOTE: Chat metadata extraction and Google Sheets integration (TASK-023)
           if (!isDryRun) {
             try {
-              // Extract chat metadata from msgstore.db
-              const chatExtractor = new ChatMetadataExtractor(undefined, customPath || config.whatsappPath);
+              // Initialize Google APIs first to get auth client
+              const { GoogleApis } = require('../google-apis');
+              const googleApis = new GoogleApis({
+                credentialsPath: './credentials.json',
+                tokenPath: './tokens/google-tokens.json'
+              });
+              await googleApis.initialize();
+
+              // Extract chat metadata from msgstore.db with Google Contacts support
+              const chatExtractor = new ChatMetadataExtractor(
+                undefined,
+                customPath || config.whatsappPath,
+                googleApis.isAuthenticated() ? googleApis.authClient : undefined
+              );
               const chatMetadata = await chatExtractor.extractChatMetadata();
 
               if (chatMetadata.length > 0) {
-
-                // Initialize Google APIs and SheetsDatabase
-                const { GoogleApis } = require('../google-apis');
+                // Initialize SheetsDatabase with the already authenticated client
                 const { SheetsDatabase } = require('../database');
-
-                const googleApis = new GoogleApis({
-                  credentialsPath: './credentials.json',
-                  tokenPath: './tokens/google-tokens.json'
-                });
-
-                await googleApis.initialize();
 
                 if (!googleApis.isAuthenticated()) {
                   console.log('⚠️  Authentication required for Google Sheets saving.');
